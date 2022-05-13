@@ -32,6 +32,168 @@ summary_statistics <- function(x) {
 
 # box plot
 
+# groups <- factor(c(rep("A", 20), rep("B", 30)), levels = c("A", "B"))
+# x <- rnorm(50, mean = 2.36, sd = 0.27)
+# 
+# create_boxplot(x, name = "Expression")
+# create_boxplot(x, name = "Expression", xintercept = 1.9)
+# create_boxplot(x, name = "Expression", xintercept = 1.9, show_points = FALSE)
+# create_boxplot(x, name = "Expression", xintercept = 1.9, show_points = TRUE, show_density = TRUE)
+# create_boxplot(x, name = "Expression", xintercept = 1.9, show_points = FALSE, show_density = TRUE)
+# 
+# create_boxplot(x, groups)
+# create_boxplot(x, groups, show_points = FALSE)
+# create_boxplot(x, groups, show_density = TRUE)
+# create_boxplot(x, groups, show_points = FALSE, show_density = TRUE)
+
+create_boxplot <- function(values,
+                           groups = "",
+                           name = NULL,
+                           xintercept = NULL,
+                           limits = NULL,
+                           show_points = TRUE,
+                           show_density = FALSE) {
+  
+  boxplot <- tibble(value = values, group = groups) %>%
+    ggplot(aes(x = value, y = group, fill = group))
+  
+  outlier_shape <- NULL
+  if (show_points) {
+    outlier_shape <- NA
+  }
+  
+  if (show_density) {
+    boxplot <- boxplot +
+      geom_violin() +
+      geom_boxplot(fill = "white", width = 0.2, outlier.shape = outlier_shape)
+  } else {
+    boxplot <- boxplot +
+      geom_boxplot(outlier.shape = outlier_shape)
+  }
+  
+  if (show_points) {
+    boxplot <- boxplot +
+      geom_jitter(
+        colour = "black",
+        width = 0,
+        height = ifelse(show_density, 0.1, 0.15)
+      )
+  }
+  
+  if (!is.null(xintercept) && !is.na(xintercept)) {
+    boxplot <- boxplot +
+      geom_vline(xintercept = xintercept, lty = "dashed", col = "#4400cc")
+  }
+  
+  if (is.null(limits)) {
+    limits <- range(c(values, xintercept), na.rm = TRUE)
+  }
+  
+  boxplot <- boxplot +
+    scale_x_continuous(limits = limits) +
+    # scale_fill_manual(values = c("#ff1aa3", "#3541e3")) +
+    scale_fill_manual(values = c("#ff1aa3", "#00b6ed")) +
+    labs(x = name) +
+    theme_minimal() +
+    theme(
+      axis.title.x = element_text(size = 14),
+      axis.title.y = element_blank(),
+      axis.text = element_text(size = 12),
+      axis.ticks.y = element_blank(),
+      panel.grid.major.y = element_blank(),
+      panel.grid.minor.y = element_blank(),
+      legend.position = "none"
+    )
+  
+  boxplot
+}
+
+# histogram
+
+# groups <- factor(c(rep("A", 20), rep("B", 30)), levels = c("A", "B"))
+# x <- rnorm(50, mean = 2.36, sd = 0.27)
+# 
+# create_histogram(x, name = "expression")
+# 
+# create_histogram(x, name = "expression", show_normal_distribution = TRUE)
+# 
+# create_histogram(x, groups, name = "expression", show_normal_distribution = TRUE)
+
+create_histogram <- function(values,
+                             groups = "",
+                             name = NULL,
+                             xintercept = NULL,
+                             number_of_bins = NULL,
+                             show_normal_distribution = FALSE) {
+  
+  histogram <- tibble(value = values, group = groups) %>%
+    ggplot(aes(x = value, fill = group, group = group))
+  
+  limits <- range(c(values, xintercept), na.rm = TRUE)
+  breaks <- NULL
+  
+  if (is.null(number_of_bins)) {
+    number_of_bins <- nclass.Sturges(values)
+    breaks <- pretty(
+      range(values, na.rm = TRUE),
+      number_of_bins,
+      min.n = 1
+    )
+    limits <- range(c(breaks, limits), na.rm = TRUE)
+  }
+  
+  if (show_normal_distribution) {
+    histogram <- histogram +
+      geom_histogram(
+        aes(y = after_stat(density)),
+        bins = number_of_bins,
+        breaks = breaks,
+        colour = "black"
+      ) +
+      stat_function(
+        fun = dnorm,
+        # colour = "#00b6ed",
+        colour = "#4400cc",
+        # lty = "twodash",
+        lwd = 0.75,
+        args = list(
+          mean = mean(values),
+          sd = sd(values)
+        )
+      )
+  } else {
+    histogram <- histogram +
+      geom_histogram(
+        bins = number_of_bins,
+        breaks = breaks,
+        colour = "black"
+      )
+  }
+  
+  if (!is.null(xintercept) && !is.na(xintercept)) {
+    histogram <- histogram +
+      geom_vline(xintercept = xintercept, lty = 2, col = "black")
+  }
+  
+  histogram <- histogram +
+    scale_x_continuous(limits = limits) +
+    scale_y_continuous(expand = expansion(mult = c(0, 0.05))) +
+    # scale_fill_manual(values = c("#ff1aa3", "#3541e3")) +
+    scale_fill_manual(values = c("#ff1aa3", "#00b6ed")) +
+    labs(x = name) +
+    facet_wrap(vars(group)) +
+    theme_minimal() +
+    theme(
+      strip.text = element_text(size = 14),
+      axis.title = element_text(size = 14),
+      axis.text = element_text(size = 12),
+      panel.grid.major.x = element_blank(),
+      panel.grid.minor.x = element_blank(),
+      legend.position = "none"
+    )
+  
+  histogram
+}
 
 # Shiny user interface
 # ====================
