@@ -321,7 +321,7 @@ ui <- fluidPage(
               )
             ),
             mainPanel(
-              plotOutput("one_sample_plots", width = "95%", height = "600px"),
+              plotOutput("one_sample_plots", width = "95%", height = "500px"),
             )
           )
         ),
@@ -460,7 +460,7 @@ ui <- fluidPage(
               )
             ),
             mainPanel(
-              plotOutput("two_sample_plots", width = "95%", height = "750px"),
+              plotOutput("two_sample_plots", width = "95%", height = "500px"),
             )
           )
         ),
@@ -993,6 +993,7 @@ server <- function(input, output, session) {
       if (nrow(data) == 0) {
         NULL
       } else {
+
         summary_statistics <- data %>%
           group_by(group) %>%
           summarize(summary_statistics(value)) %>%
@@ -1007,7 +1008,26 @@ server <- function(input, output, session) {
             names_from = "group",
             values_from = "value"
           )
+
+        if (input$two_sample_paired) {
+          difference_statistics <-
+            summary_statistics(two_sample_paired_differences()) %>%
+            pivot_longer(
+              everything(),
+              names_to = "statistic",
+              values_to = "difference"
+            ) %>%
+            mutate(difference = round(difference, digits = 3))
+
+          summary_statistics <- left_join(
+            summary_statistics,
+            difference_statistics,
+            by = "statistic"
+          )
+        }
+
         colnames(summary_statistics)[1] <- ""
+
         DT::datatable(
           summary_statistics,
           options = list(
