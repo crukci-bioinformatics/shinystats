@@ -1,8 +1,6 @@
 library(shiny)
 library(shinyjs)
 library(tidyverse)
-library(tidyr)
-library(dplyr)
 library(patchwork)
 library(DT)
 
