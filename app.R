@@ -7,6 +7,74 @@ library(DT)
 options(shiny.maxRequestSize = 1024 * 1024 * 1024)
 options(scipen = 999)
 
+# Datasets
+# ========
+
+datasets <- list(
+  "Star Wars" = starwars,
+  "Fisher's iris data" = iris,
+  "2.1 Effect of disease X on height" = read_csv(
+    "datasets/DiseaseX.csv",
+    col_types = "cd"
+  ),
+  "2.2 Blood vessel formation" = read_csv(
+    "datasets/BloodVesselFormation1.csv",
+    col_types = "cd"
+  ),
+  "3.1 Biological process duraction" = read_csv(
+    "datasets/BiologicalProcessDurations.csv",
+    col_types = "fd"
+  ),
+  "3.2 Blood vessel formation" = read_csv(
+    "datasets/BloodVesselFormation2.csv",
+    col_types = "dd"
+  ),
+  "3.3 NIBP gene expression in breast cancer patients" = read_csv(
+    "datasets/NIBPExpression.csv",
+    col_types = "fd"
+  ),
+  "3.4 Vitamin D levels and fibrosis" = read_csv(
+    "datasets/FibrosisVitaminD.csv",
+    col_types = "fd"
+  ),
+  "3.5 Birth weight of twins and Sudden Infant Death Syndrome" = read_csv(
+    "datasets/SIDSTwinBirthWeight.csv",
+    col_types = "dd"
+  ),
+  "4.1 Growth of Zea seedlings from self- and cross-fertilization" = read_csv(
+    "datasets/PlantGrowthFertilization.csv",
+    col_types = "dd"
+  ),
+  "4.2 Florence Nightingale's hygiene regime" = read_csv(
+    "datasets/FlorenceNightingaleHygieneRegime.csv",
+    col_types = "fd"
+  ),
+  "4.3 Effect of bran on diet of patients with diverticulosis" = read_csv(
+    "datasets/BranDiverticulosis.csv",
+    col_types = "cd"
+  ),
+  "4.4 Effect on repetitive behaviour of autism drug" = read_csv(
+    "datasets/AutismDrugRepetitiveBehaviour.csv",
+    col_types = "dd"
+  ),
+  "4.5 Effect of HIV drug on CD4 cell counts" = read_csv(
+    "datasets/HIVDrugCD4Counts.csv",
+    col_types = "dd"
+  ),
+  "4.6 Drink driving and reaction times" = read_csv(
+    "datasets/DrinkDrivingReactionTimes.csv",
+    col_types = "dd"
+  ),
+  "4.7 Pollution in poplar trees" = read_csv(
+    "datasets/TreePollution.csv",
+    col_types = "dd"
+  ),
+  "4.8 Sex effect on salaries of professors" = read_csv(
+    "datasets/ProfessorialSalaries.csv",
+    col_types = "fd"
+  )
+)
+
 # useful functions
 # ================
 
@@ -220,12 +288,12 @@ ui <- fluidPage(
             )
           ),
           column(
-            width = 3,
+            width = 6,
             offset = 1,
             selectInput(
               "sample_data",
               label = "Sample data sets",
-              choices = c("starwars", "mtcars", "iris")
+              choices = names(datasets)
             )
           )
         )
@@ -581,7 +649,6 @@ server <- function(input, output, session) {
   # data file upload
   observe({
     file <- input$data_file
-    message("New file selected: ", file)
     if (!is.null(file)) {
       if (str_detect(file$name, regex("\\.csv$", ignore_case = TRUE))) {
         reactive_values$data <- read_csv(file$datapath)
@@ -594,8 +661,7 @@ server <- function(input, output, session) {
   # select sample data set
   observe({
     sample_data <- input$sample_data
-    message("Selected sample data: ", sample_data)
-    reactive_values$data <- as_tibble(get(sample_data))
+    reactive_values$data <- datasets[[sample_data]]
   })
 
   # data file upload
