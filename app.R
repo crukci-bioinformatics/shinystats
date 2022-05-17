@@ -19,8 +19,10 @@ summary_statistics <- function(x) {
     `Missing values` = sum(is.na(x)),
     Mean = mean(x, na.rm = TRUE),
     `Standard deviation` = sd(x, na.rm = TRUE),
-    `Confidence interval (C.I.) lower` = mean(x, na.rm = TRUE) - 1.96 * sd(x, na.rm = TRUE) / sqrt(length(x)),
-    `Confidence interval (C.I.) upper` = mean(x, na.rm = TRUE) + 1.96 * sd(x, na.rm = TRUE) / sqrt(length(x)),
+    `Confidence interval (C.I.) lower` =
+      mean(x, na.rm = TRUE) - 1.96 * sd(x, na.rm = TRUE) / sqrt(length(x)),
+    `Confidence interval (C.I.) upper` =
+      mean(x, na.rm = TRUE) + 1.96 * sd(x, na.rm = TRUE) / sqrt(length(x)),
     Minimum = min(x, na.rm = TRUE),
     `25th percentile (1st quartile)` = quantile(x, 0.25, na.rm = TRUE),
     Median = median(x, na.rm = TRUE),
@@ -278,7 +280,11 @@ ui <- fluidPage(
                 label = "Show points on box plot",
                 value = TRUE
               ),
-              helpText("Outlier points for those observations that are further than 1.5 IQR from the edges of the box, i.e. the first and third quantiles, are always displayed."),
+              helpText(
+                "Outlier points for those observations that are further than",
+                "1.5 IQR from the edges of the box, i.e. the first and third",
+                "quantiles, are always displayed."
+              ),
               checkboxInput(
                 "one_sample_violin",
                 label = "Overlay density on box plot",
@@ -300,14 +306,21 @@ ui <- fluidPage(
                   value = 20,
                   ticks = FALSE
                 ),
-                helpText("Note that the actual number of bins may differ from that specified.")
+                helpText(
+                  "Note that the actual number of bins may differ from that",
+                  "specified."
+                )
               ),
               checkboxInput(
                 "one_sample_show_normal_distribution",
                 label = "Overlay normal distribution",
                 value = FALSE
               ),
-              helpText("The normal distribution shown is based on the mean and standard deviation of the sample observations. Densities instead of counts are displayed if this option is selected.")
+              helpText(
+                "The normal distribution shown is based on the mean and",
+                "standard deviation of the sample observations. Densities",
+                "instead of counts are displayed if this option is selected."
+              )
             ),
             mainPanel(
               plotOutput("one_sample_plots", width = "95%", height = "500px"),
@@ -643,8 +656,7 @@ server <- function(input, output, session) {
   })
 
   # summary statistics table
-  output$one_sample_summary_statistics <- DT::renderDataTable(
-    {
+  output$one_sample_summary_statistics <- DT::renderDataTable({
       data <- one_sample_data()
       if (is_empty(data)) {
         NULL
@@ -825,7 +837,11 @@ server <- function(input, output, session) {
       } else {
         data %>%
           select(all_of(c(variable1, variable2))) %>%
-          pivot_longer(everything(), names_to = "group", values_to = "value") %>%
+          pivot_longer(
+            everything(),
+            names_to = "group",
+            values_to = "value"
+          ) %>%
           mutate(group = factor(group, levels = c(variable1, variable2)))
       }
 
@@ -868,7 +884,10 @@ server <- function(input, output, session) {
         if (is_empty(numerical_variables)) {
           "No numerical variables in current data set"
         } else if (length(numerical_variables) < 2) {
-          "Only one numerical variable in current data set - need 2 for paired data"
+          str_c(
+            "Only one numerical variable in current data set",
+            " - need 2 for paired data"
+          )
         } else {
           ""
         }
