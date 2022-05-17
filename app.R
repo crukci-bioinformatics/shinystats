@@ -305,8 +305,7 @@ ui <- fluidPage(
                   ticks = FALSE
                 ),
                 helpText(
-                  "Note that the actual number of bins may differ from that",
-                  "specified."
+                  "The actual number of bins may differ from that specified",
                 )
               ),
               checkboxInput(
@@ -316,12 +315,13 @@ ui <- fluidPage(
               ),
               helpText(
                 "The normal distribution shown is based on the mean and",
-                "standard deviation of the sample observations. Densities",
-                "instead of counts are displayed if this option is selected."
+                "standard deviation of the sample observations.",
+                "Densities instead of counts are displayed if this option is",
+                "selected."
               )
             ),
             mainPanel(
-              plotOutput("one_sample_plots", width = "95%", height = "500px"),
+              plotOutput("one_sample_plots", width = "95%", height = "600px"),
             )
           )
         ),
@@ -407,7 +407,62 @@ ui <- fluidPage(
           DT::dataTableOutput("two_sample_summary_statistics", width = "66%")
         ),
         tabPanel(
-          "Plots"
+          "Plots",
+          br(),
+          sidebarLayout(
+            sidebarPanel(
+              h5("Box plot"),
+              checkboxInput(
+                "two_sample_show_points",
+                label = "Show points on box plots",
+                value = TRUE
+              ),
+              helpText(
+                "Outlier points for those observations that are further than",
+                "1.5 IQR from the edges of the box, i.e. the first and third",
+                "quantiles, are always displayed."
+              ),
+              checkboxInput(
+                "two_sample_violin",
+                label = "Overlay density on box plots",
+                value = FALSE
+              ),
+              h5("Histogram"),
+              checkboxInput(
+                "two_sample_choose_number_of_bins",
+                label = "Choose number of bins",
+                value = FALSE
+              ),
+              conditionalPanel(
+                condition = "input.two_sample_choose_number_of_bins",
+                sliderInput(
+                  "two_sample_number_of_bins",
+                  label = "Number of bins",
+                  min = 5,
+                  max = 50,
+                  value = 20,
+                  ticks = FALSE
+                ),
+                helpText(
+                  "The actual number of bins may differ from that specified",
+                )
+              ),
+              checkboxInput(
+                "two_sample_show_normal_distribution",
+                label = "Overlay normal distribution",
+                value = FALSE
+              ),
+              helpText(
+                "The normal distribution shown is based on the mean and",
+                "standard deviation of all observations from both groups.",
+                "Densities instead of counts are displayed if this option is",
+                "selected."
+              )
+            ),
+            mainPanel(
+              plotOutput("two_sample_plots", width = "95%", height = "750px"),
+            )
+          )
         ),
         tabPanel(
           "Statistical analysis"
@@ -738,7 +793,8 @@ server <- function(input, output, session) {
       show_density = input$one_sample_violin
     )
 
-    boxplot / histogram
+    boxplot + plot_spacer() + histogram +
+      plot_layout(heights = c(1, 0.25, 1))
   })
 
   # two sample test
@@ -814,7 +870,7 @@ server <- function(input, output, session) {
     )
   })
 
-  # selected data for one sample test
+  # selected data for two sample test
   two_sample_data <- reactive({
 
     data <- data()
@@ -830,13 +886,13 @@ server <- function(input, output, session) {
           !variable1 %in% colnames(data) ||
           !variable2 %in% colnames(data)
       ) {
-        # tibble(group = character(), value = double())
         tibble()
       } else {
         data %>%
           select(all_of(c(variable1, variable2))) %>%
+          mutate(observation = row_number()) %>%
           pivot_longer(
-            everything(),
+            cols = all_of(c(variable1, variable2)),
             names_to = "group",
             values_to = "value"
           ) %>%
@@ -858,15 +914,42 @@ server <- function(input, output, session) {
           !categorical_variable %in% colnames(data) ||
           !variable %in% colnames(data)
       ) {
-        # tibble(group = character(), value = double())
         tibble()
       } else {
         data %>%
           select(all_of(c(categorical_variable, variable))) %>%
           rename(group = !!categorical_variable) %>%
           rename(value = !!variable) %>%
-          filter(group %in% c(group1, group2))
+          filter(group %in% c(group1, group2)) %>%
+          mutate(group = factor(group, levels = c(group1, group2)))
       }
+    }
+  })
+
+  # selected data for two sample test - paired observations
+  two_sample_paired_differences <- reactive({
+
+    data <- data()
+
+    if (input$two_sample_paired) {
+      # paired observations in two numerical columns
+      variable1 <- input$two_sample_variable1
+      variable2 <- input$two_sample_variable2
+
+      if (variable1 == "" || variable2 == "" ||
+          variable1 == variable2 ||
+          !variable1 %in% colnames(data) ||
+          !variable2 %in% colnames(data)
+      ) {
+        numeric()
+      } else {
+        data %>%
+          select(all_of(c(variable1, variable2))) %>%
+          transmute(difference = .data[[variable2]] - .data[[variable1]]) %>%
+          pull(difference)
+      }
+    } else {
+        numeric()
     }
   })
 
@@ -938,6 +1021,92 @@ server <- function(input, output, session) {
     },
     server = TRUE
   )
+
+  # boxplots and histograms
+  output$two_sample_plots <- renderPlot({
+    data <- two_sample_data()
+    if (is_empty(data)) {
+      return(NULL)
+    }
+
+    data <- filter(data, !is.na(value))
+    if (nrow(data) == 0) {
+      return(NULL)
+    }
+
+    groups <- data$group
+    values <- data$value
+
+    variable <- NULL
+    if (!input$two_sample_paired) {
+      variable <- input$two_sample_variable
+    }
+
+    boxplot <- create_boxplot(
+      values,
+      groups = groups,
+      name = variable,
+      show_points = input$two_sample_show_points,
+      show_density = input$two_sample_violin
+    )
+
+    number_of_bins <- NULL
+    if (input$two_sample_choose_number_of_bins) {
+      number_of_bins <- input$two_sample_number_of_bins
+      if (is.na(number_of_bins)) {
+        number_of_bins <- NULL
+      }
+    }
+
+    histogram <- create_histogram(
+      values,
+      groups = groups,
+      name = variable,
+      number_of_bins = number_of_bins,
+      show_normal_distribution = input$two_sample_show_normal_distribution
+    )
+
+    plots <- boxplot + plot_spacer() + histogram +
+      plot_layout(heights = c(1, 0.25, 1))
+
+    if (input$two_sample_paired) {
+
+      differences <- two_sample_paired_differences()
+      if (!is_empty(differences)) {
+
+        difference_boxplot <- create_boxplot(
+          differences,
+          name = "differences",
+          show_points = input$two_sample_show_points,
+          show_density = input$two_sample_violin
+        )
+
+        number_of_bins <- NULL
+        if (input$two_sample_choose_number_of_bins) {
+          number_of_bins <- input$two_sample_number_of_bins
+          if (is.na(number_of_bins)) {
+            number_of_bins <- NULL
+          }
+        }
+
+        difference_histogram <- create_histogram(
+          differences,
+          name = "differences",
+          number_of_bins = number_of_bins,
+          show_normal_distribution = input$two_sample_show_normal_distribution
+        )
+
+        plots <-
+          boxplot + plot_spacer() + difference_boxplot +
+          plot_spacer() + plot_spacer() + plot_spacer() +
+          histogram + plot_spacer() + difference_histogram +
+          plot_layout(widths = c(2, 0.25, 1), heights = c(1, 0.25, 1))
+      }
+    }
+
+    plots
+  })
+
 }
 
 # shinyApp(ui = ui, server = server)
