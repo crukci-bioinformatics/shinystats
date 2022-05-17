@@ -295,6 +295,13 @@ ui <- fluidPage(
                 value = FALSE
               ),
               conditionalPanel(
+                condition = "!input.one_sample_choose_number_of_bins",
+                helpText(
+                  "Chooses an optimal number of bins based on the",
+                  "data if not selected."
+                )
+              ),
+              conditionalPanel(
                 condition = "input.one_sample_choose_number_of_bins",
                 sliderInput(
                   "one_sample_number_of_bins",
@@ -305,7 +312,8 @@ ui <- fluidPage(
                   ticks = FALSE
                 ),
                 helpText(
-                  "The actual number of bins may differ from that specified",
+                  "The actual number of bins may differ from the specified",
+                  "number.",
                 )
               ),
               checkboxInput(
@@ -314,10 +322,11 @@ ui <- fluidPage(
                 value = FALSE
               ),
               helpText(
+                "Densities instead of counts are displayed if selected."
+              ),
+              helpText(
                 "The normal distribution shown is based on the mean and",
-                "standard deviation of the sample observations.",
-                "Densities instead of counts are displayed if this option is",
-                "selected."
+                "standard deviation of the sample observations."
               )
             ),
             mainPanel(
@@ -434,6 +443,13 @@ ui <- fluidPage(
                 value = FALSE
               ),
               conditionalPanel(
+                condition = "!input.two_sample_choose_number_of_bins",
+                helpText(
+                  "Chooses an optimal number of bins based on the",
+                  "data if not selected."
+                )
+              ),
+              conditionalPanel(
                 condition = "input.two_sample_choose_number_of_bins",
                 sliderInput(
                   "two_sample_number_of_bins",
@@ -444,7 +460,8 @@ ui <- fluidPage(
                   ticks = FALSE
                 ),
                 helpText(
-                  "The actual number of bins may differ from that specified",
+                  "The actual number of bins may differ from the specified",
+                  "number.",
                 )
               ),
               checkboxInput(
@@ -453,10 +470,11 @@ ui <- fluidPage(
                 value = FALSE
               ),
               helpText(
+                "Densities instead of counts are displayed if selected."
+              ),
+              helpText(
                 "The normal distribution shown is based on the mean and",
-                "standard deviation of all observations from both groups.",
-                "Densities instead of counts are displayed if this option is",
-                "selected."
+                "standard deviation of all observations from both groups."
               )
             ),
             mainPanel(
@@ -945,7 +963,7 @@ server <- function(input, output, session) {
       } else {
         data %>%
           select(all_of(c(variable1, variable2))) %>%
-          transmute(difference = .data[[variable2]] - .data[[variable1]]) %>%
+          transmute(difference = get(variable2) - get(variable1)) %>%
           pull(difference)
       }
     } else {
