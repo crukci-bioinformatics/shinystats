@@ -3,7 +3,7 @@ library(shinyjs)
 library(tidyverse)
 library(tidyr)
 library(dplyr)
-library(cowplot)
+library(patchwork)
 library(DT)
 
 options(shiny.maxRequestSize = 1024 * 1024 * 1024)
@@ -31,21 +31,6 @@ summary_statistics <- function(x) {
 }
 
 # box plot
-
-# groups <- factor(c(rep("A", 20), rep("B", 30)), levels = c("A", "B"))
-# x <- rnorm(50, mean = 2.36, sd = 0.27)
-# 
-# create_boxplot(x, name = "Expression")
-# create_boxplot(x, name = "Expression", xintercept = 1.9)
-# create_boxplot(x, name = "Expression", xintercept = 1.9, show_points = FALSE)
-# create_boxplot(x, name = "Expression", xintercept = 1.9, show_points = TRUE, show_density = TRUE)
-# create_boxplot(x, name = "Expression", xintercept = 1.9, show_points = FALSE, show_density = TRUE)
-# 
-# create_boxplot(x, groups)
-# create_boxplot(x, groups, show_points = FALSE)
-# create_boxplot(x, groups, show_density = TRUE)
-# create_boxplot(x, groups, show_points = FALSE, show_density = TRUE)
-
 create_boxplot <- function(values,
                            groups = "",
                            name = NULL,
@@ -53,15 +38,14 @@ create_boxplot <- function(values,
                            limits = NULL,
                            show_points = TRUE,
                            show_density = FALSE) {
-  
   boxplot <- tibble(value = values, group = groups) %>%
     ggplot(aes(x = value, y = group, fill = group))
-  
+
   outlier_shape <- NULL
   if (show_points) {
     outlier_shape <- NA
   }
-  
+
   if (show_density) {
     boxplot <- boxplot +
       geom_violin() +
@@ -70,8 +54,11 @@ create_boxplot <- function(values,
     boxplot <- boxplot +
       geom_boxplot(outlier.shape = outlier_shape)
   }
-  
+
   if (show_points) {
+    # set the seed so that the points do not move when other plotting options
+    # are changed
+    set.seed(12345)
     boxplot <- boxplot +
       geom_jitter(
         colour = "black",
@@ -79,20 +66,24 @@ create_boxplot <- function(values,
         height = ifelse(show_density, 0.1, 0.15)
       )
   }
-  
+
   if (!is.null(xintercept) && !is.na(xintercept)) {
     boxplot <- boxplot +
-      geom_vline(xintercept = xintercept, lty = "dashed", col = "#4400cc")
+      geom_vline(
+        xintercept = xintercept,
+        colour = "#FFB000",
+        size = 1.25,
+        linetype = "solid"
+      )
   }
-  
+
   if (is.null(limits)) {
     limits <- range(c(values, xintercept), na.rm = TRUE)
   }
-  
+
   boxplot <- boxplot +
     scale_x_continuous(limits = limits) +
-    # scale_fill_manual(values = c("#ff1aa3", "#3541e3")) +
-    scale_fill_manual(values = c("#ff1aa3", "#00b6ed")) +
+    scale_fill_manual(values = c("#648FFF", "#DC267F")) +
     labs(x = name) +
     theme_minimal() +
     theme(
@@ -104,44 +95,41 @@ create_boxplot <- function(values,
       panel.grid.minor.y = element_blank(),
       legend.position = "none"
     )
-  
+
   boxplot
 }
 
 # histogram
-
-# groups <- factor(c(rep("A", 20), rep("B", 30)), levels = c("A", "B"))
-# x <- rnorm(50, mean = 2.36, sd = 0.27)
-# 
-# create_histogram(x, name = "expression")
-# 
-# create_histogram(x, name = "expression", show_normal_distribution = TRUE)
-# 
-# create_histogram(x, groups, name = "expression", show_normal_distribution = TRUE)
-
 create_histogram <- function(values,
                              groups = "",
                              name = NULL,
                              xintercept = NULL,
                              number_of_bins = NULL,
                              show_normal_distribution = FALSE) {
-  
+
   histogram <- tibble(value = values, group = groups) %>%
     ggplot(aes(x = value, fill = group, group = group))
-  
+
   limits <- range(c(values, xintercept), na.rm = TRUE)
   breaks <- NULL
-  
+
   if (is.null(number_of_bins)) {
     number_of_bins <- nclass.Sturges(values)
-    breaks <- pretty(
-      range(values, na.rm = TRUE),
-      number_of_bins,
-      min.n = 1
-    )
-    limits <- range(c(breaks, limits), na.rm = TRUE)
+    # message("Sturges number of bins: ", number_of_bins)
   }
-  
+
+  breaks <- pretty(
+    range(values, na.rm = TRUE),
+    number_of_bins,
+    min.n = 1
+  )
+
+  # message("Actual number of bins: ", length(breaks) - 1)
+  # message("Breaks: ", str_c(as.character(breaks), collapse = ", "))
+
+  limits <- range(c(breaks, limits), na.rm = TRUE)
+  # message("Limits: ", str_c(limits, collapse = ", "))
+
   if (show_normal_distribution) {
     histogram <- histogram +
       geom_histogram(
@@ -152,10 +140,9 @@ create_histogram <- function(values,
       ) +
       stat_function(
         fun = dnorm,
-        # colour = "#00b6ed",
-        colour = "#4400cc",
-        # lty = "twodash",
-        lwd = 0.75,
+        colour = "grey40",
+        linetype = "solid",
+        size = 0.75,
         args = list(
           mean = mean(values),
           sd = sd(values)
@@ -169,17 +156,21 @@ create_histogram <- function(values,
         colour = "black"
       )
   }
-  
+
   if (!is.null(xintercept) && !is.na(xintercept)) {
     histogram <- histogram +
-      geom_vline(xintercept = xintercept, lty = 2, col = "black")
+      geom_vline(
+        xintercept = xintercept,
+        colour = "#FFB000",
+        size = 1.25,
+        linetype = "solid"
+      )
   }
-  
+
   histogram <- histogram +
     scale_x_continuous(limits = limits) +
     scale_y_continuous(expand = expansion(mult = c(0, 0.05))) +
-    # scale_fill_manual(values = c("#ff1aa3", "#3541e3")) +
-    scale_fill_manual(values = c("#ff1aa3", "#00b6ed")) +
+    scale_fill_manual(values = c("#648FFF", "#DC267F")) +
     labs(x = name) +
     facet_wrap(vars(group)) +
     theme_minimal() +
@@ -191,7 +182,7 @@ create_histogram <- function(values,
       panel.grid.minor.x = element_blank(),
       legend.position = "none"
     )
-  
+
   histogram
 }
 
@@ -308,7 +299,8 @@ ui <- fluidPage(
                   max = 50,
                   value = 20,
                   ticks = FALSE
-                )
+                ),
+                helpText("Note that the actual number of bins may differ from that specified.")
               ),
               checkboxInput(
                 "one_sample_show_normal_distribution",
@@ -698,105 +690,45 @@ server <- function(input, output, session) {
       return(NULL)
     }
 
+    values <- data$value
+
     variable <- input$one_sample_variable
 
-    hypothesized_mean <- input$one_sample_hypothesized_mean
+    xintercept <- NULL
+    if (input$one_sample_show_hypothesized_mean) {
+      xintercept <- input$one_sample_hypothesized_mean
+      if (is.na(xintercept)) {
+        xintercept <- NULL
+      }
+    }
 
-    limits <- range(c(data$value, hypothesized_mean), na.rm = TRUE)
-
+    number_of_bins <- NULL
     if (input$one_sample_choose_number_of_bins) {
       number_of_bins <- input$one_sample_number_of_bins
-      breaks <- NULL
-    } else {
-      number_of_bins <- nclass.Sturges(data$value)
-      breaks <- pretty(
-        range(data$value, na.rm = TRUE),
-        number_of_bins,
-        min.n = 1
-      )
-      limits <- range(c(breaks, limits), na.rm = TRUE)
+      if (is.na(number_of_bins)) {
+        number_of_bins <- NULL
+      }
     }
 
-    boxplot <- ggplot(data, aes(x = value, y = group))
+    histogram <- create_histogram(
+      values,
+      name = variable,
+      xintercept = xintercept,
+      number_of_bins = number_of_bins,
+      show_normal_distribution = input$one_sample_show_normal_distribution
+    )
 
-    outlier_shape <- NULL
-    if (input$one_sample_show_points) {
-      outlier_shape <- NA
-    }
+    limits <- layer_scales(histogram)$x$limits
 
-    if (input$one_sample_violin) {
-      boxplot <- boxplot +
-        geom_violin(fill = "#FF00FF", alpha = 0.75) +
-        geom_boxplot(fill = "white", width = 0.2, outlier.shape = outlier_shape)
-    } else {
-      boxplot <- boxplot +
-        geom_boxplot(fill = "#FF00FF", alpha = 0.75, outlier.shape = outlier_shape)
-    }
+    boxplot <- create_boxplot(
+      values,
+      xintercept = xintercept,
+      limits = limits,
+      show_points = input$one_sample_show_points,
+      show_density = input$one_sample_violin
+    )
 
-    if (input$one_sample_show_points) {
-      boxplot <- boxplot +
-        geom_jitter(
-          colour = "black",
-          width = 0,
-          height = ifelse(input$one_sample_violin, 0.1, 0.15)
-        )
-    }
-
-    if (input$one_sample_show_hypothesized_mean && !is.na(hypothesized_mean)) {
-      boxplot <- boxplot +
-        geom_vline(xintercept = hypothesized_mean, lty = 2, col = "red")
-    }
-
-    boxplot <- boxplot +
-      scale_x_continuous(limits = limits) +
-      scale_y_discrete(breaks = NULL) +
-      labs(x = variable, y = "") +
-      theme_minimal()
-
-    histogram <- ggplot(data, aes(x = value))
-
-    if (input$one_sample_show_normal_distribution) {
-      histogram <- histogram +
-        geom_histogram(
-          aes(y = after_stat(density)),
-          bins = number_of_bins,
-          breaks = breaks,
-          colour = "black",
-          fill = "navyblue"
-        ) +
-        stat_function(
-          fun = dnorm,
-          colour = "red",
-          args = list(
-            mean = mean(data$value),
-            sd = sd(data$value)
-          )
-        )
-    } else {
-      histogram <- histogram +
-        geom_histogram(
-          bins = number_of_bins,
-          breaks = breaks,
-          colour = "black",
-          fill = "navyblue"
-        )
-    }
-
-    if (input$one_sample_show_hypothesized_mean && !is.na(hypothesized_mean)) {
-      histogram <- histogram +
-        geom_vline(xintercept = hypothesized_mean, lty = 2, col = "red")
-    }
-
-    histogram <- histogram +
-      scale_x_continuous(limits = limits) +
-      labs(x = variable) +
-      theme_minimal() +
-      theme(
-        panel.grid.major.x = element_blank(),
-        panel.grid.minor.x = element_blank()
-      )
-
-    plot_grid(boxplot, histogram, ncol = 1, rel_heights = c(2, 3), align = "v")
+    boxplot / histogram
   })
 
   # two sample test
@@ -991,4 +923,5 @@ server <- function(input, output, session) {
   )
 }
 
-app <- shinyApp(ui = ui, server = server)
+# shinyApp(ui = ui, server = server)
+runApp(shinyApp(ui = ui, server = server))
