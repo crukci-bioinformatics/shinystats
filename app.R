@@ -811,14 +811,29 @@ server <- function(input, output, session) {
     data <- data()
     variable <- input$one_sample_variable
     if (variable == "" || !variable %in% colnames(data)) {
-      # tibble(group = character(), value = double())
-      tibble()
+      numeric()
     } else {
-      data %>%
-        select(all_of(variable)) %>%
-        rename(value = !!variable) %>%
-        mutate(group = "A", .before = "value")
+      values <- pull(data, variable)
+      # apply log transformation if selected
+      switch(
+        input$one_sample_transformation,
+        None = values,
+        log10 = log10(values),
+        log2 = log2(values),
+        ln = log(values)
+      )
     }
+  })
+
+  one_sample_hypothesized_mean <- reactive({
+    # apply log transformation if selected
+    switch(
+      input$one_sample_transformation,
+      None = input$one_sample_hypothesized_mean,
+      log10 = log10(input$one_sample_hypothesized_mean),
+      log2 = log2(input$one_sample_hypothesized_mean),
+      ln = log(input$one_sample_hypothesized_mean)
+    )
   })
 
   # information message about the current data set and whether there are any
@@ -843,20 +858,13 @@ server <- function(input, output, session) {
       if (is_empty(data)) {
         NULL
       } else {
-        summary_statistics <- data %>%
-          group_by(group) %>%
-          summarize(summary_statistics(value)) %>%
+        summary_statistics <- summary_statistics(data) %>%
           pivot_longer(
-            -group,
+            everything(),
             names_to = "statistic",
             values_to = "value"
           ) %>%
-          mutate(value = round(value, digits = 3)) %>%
-          pivot_wider(
-            id_cols = "statistic",
-            names_from = "group",
-            values_from = "value"
-          )
+          mutate(value = round(value, digits = 3))
         DT::datatable(
           summary_statistics,
           options = list(
@@ -875,22 +883,19 @@ server <- function(input, output, session) {
   # boxplot and histogram
   output$one_sample_plots <- renderPlot({
     data <- one_sample_data()
-    if (is_empty(data)) {
+
+    # filter out missing values
+    values <- data[!is.na(data)]
+
+    if (is_empty(values)) {
       return(NULL)
     }
-
-    data <- filter(data, !is.na(value))
-    if (nrow(data) == 0) {
-      return(NULL)
-    }
-
-    values <- data$value
 
     variable <- input$one_sample_variable
 
     xintercept <- NULL
     if (input$one_sample_show_hypothesized_mean) {
-      xintercept <- input$one_sample_hypothesized_mean
+      xintercept <- one_sample_hypothesized_mean()
       if (is.na(xintercept)) {
         xintercept <- NULL
       }
