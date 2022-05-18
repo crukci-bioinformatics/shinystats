@@ -98,6 +98,17 @@ summary_statistics <- function(x) {
   ))
 }
 
+# log transform the given set of values
+log_transform <- function(values, type) {
+  switch(
+    type,
+    None = values,
+    log10 = log10(values),
+    log2 = log2(values),
+    ln = log(values)
+  )
+}
+
 # box plot
 create_boxplot <- function(values,
                            groups = "",
@@ -785,6 +796,22 @@ server <- function(input, output, session) {
   # one sample test
   # ---------------
 
+  # information message about the current data set and whether there are any
+  # numerical columns/variables
+  output$one_sample_info <- renderText({
+    data <- data()
+    if (is_empty(data)) {
+      "No data loaded"
+    } else {
+      numerical_variables <- numerical_variables()
+      if (is_empty(numerical_variables)) {
+        "No numerical variables in current data set"
+      } else {
+        ""
+      }
+    }
+  })
+
   # update variable selection list for one-sample test
   observe({
     updateSelectInput(
@@ -813,43 +840,18 @@ server <- function(input, output, session) {
     if (variable == "" || !variable %in% colnames(data)) {
       numeric()
     } else {
-      values <- pull(data, variable)
-      # apply log transformation if selected
-      switch(
-        input$one_sample_transformation,
-        None = values,
-        log10 = log10(values),
-        log2 = log2(values),
-        ln = log(values)
-      )
+      data %>%
+        pull(variable) %>%
+        log_transform(input$one_sample_transformation)
     }
   })
 
+  # hypothesized mean, log transformed if required
   one_sample_hypothesized_mean <- reactive({
-    # apply log transformation if selected
-    switch(
-      input$one_sample_transformation,
-      None = input$one_sample_hypothesized_mean,
-      log10 = log10(input$one_sample_hypothesized_mean),
-      log2 = log2(input$one_sample_hypothesized_mean),
-      ln = log(input$one_sample_hypothesized_mean)
+    log_transform(
+      input$one_sample_hypothesized_mean,
+      input$one_sample_transformation
     )
-  })
-
-  # information message about the current data set and whether there are any
-  # numerical columns/variables
-  output$one_sample_info <- renderText({
-    data <- data()
-    if (is_empty(data)) {
-      "No data loaded"
-    } else {
-      numerical_variables <- numerical_variables()
-      if (is_empty(numerical_variables)) {
-        "No numerical variables in current data set"
-      } else {
-        ""
-      }
-    }
   })
 
   # summary statistics table
@@ -933,6 +935,41 @@ server <- function(input, output, session) {
 
   # two sample test
   # ---------------
+
+  # information message about the current data set and whether there are any
+  # numerical columns/variables
+  output$two_sample_info <- renderText({
+    data <- data()
+    if (is_empty(data)) {
+      "No data loaded"
+    } else {
+      numerical_variables <- numerical_variables()
+      if (input$two_sample_paired) {
+        if (is_empty(numerical_variables)) {
+          "No numerical variables in current data set"
+        } else if (length(numerical_variables) < 2) {
+          "Only one numerical variable in current data set"
+        } else {
+          ""
+        }
+      } else {
+        categorical_variables <- categorical_variables()
+        if (is_empty(numerical_variables)) {
+          if (is_empty(categorical_variables)) {
+            "No categorical or numerical variables in current data set"
+          } else {
+            "No numerical variables in current data set"
+          }
+        } else {
+          if (is_empty(categorical_variables)) {
+            "No categorical variables in current data set"
+          } else {
+          ""
+          }
+        }
+      }
+    }
+  })
 
   # update categorical variable selection list for two-sample test
   observe({
@@ -1024,15 +1061,17 @@ server <- function(input, output, session) {
       } else {
         data %>%
           select(all_of(c(variable1, variable2))) %>%
-          mutate(observation = row_number()) %>%
           pivot_longer(
             cols = all_of(c(variable1, variable2)),
             names_to = "group",
             values_to = "value"
           ) %>%
-          mutate(group = factor(group, levels = c(variable1, variable2)))
+          mutate(group = factor(group, levels = c(variable1, variable2))) %>%
+          mutate(value = log_transform(
+            value,
+            input$two_sample_paired_transformation
+          ))
       }
-
     } else {
       # data expected to be structured with one categorical variable/column
       # specifying the two or more groups and another numerical column
@@ -1043,19 +1082,22 @@ server <- function(input, output, session) {
       group2 <- input$two_sample_group2
 
       if (categorical_variable == "" || variable == "" ||
-          group1 == "" || group2 == "" ||
-          group1 == group2 ||
-          !categorical_variable %in% colnames(data) ||
-          !variable %in% colnames(data)
+        group1 == "" || group2 == "" ||
+        group1 == group2 ||
+        !categorical_variable %in% colnames(data) ||
+        !variable %in% colnames(data)
       ) {
         tibble()
       } else {
         data %>%
           select(all_of(c(categorical_variable, variable))) %>%
-          rename(group = !!categorical_variable) %>%
-          rename(value = !!variable) %>%
+          `colnames<-`(c("group", "value")) %>%
           filter(group %in% c(group1, group2)) %>%
-          mutate(group = factor(group, levels = c(group1, group2)))
+          mutate(group = factor(group, levels = c(group1, group2))) %>%
+          mutate(value = log_transform(
+            value,
+            input$two_sample_transformation
+          ))
       }
     }
   })
@@ -1080,45 +1122,11 @@ server <- function(input, output, session) {
         data %>%
           select(all_of(c(variable1, variable2))) %>%
           transmute(difference = get(variable2) - get(variable1)) %>%
-          pull(difference)
+          pull(difference) %>%
+          log_transform(input$two_sample_paired_transformation)
       }
     } else {
         numeric()
-    }
-  })
-
-  # information message about the current data set and whether there are any
-  # numerical columns/variables
-  output$two_sample_info <- renderText({
-    data <- data()
-    if (is_empty(data)) {
-      "No data loaded"
-    } else {
-      numerical_variables <- numerical_variables()
-      if (input$two_sample_paired) {
-        if (is_empty(numerical_variables)) {
-          "No numerical variables in current data set"
-        } else if (length(numerical_variables) < 2) {
-          "Only one numerical variable in current data set"
-        } else {
-          ""
-        }
-      } else {
-        categorical_variables <- categorical_variables()
-        if (is_empty(numerical_variables)) {
-          if (is_empty(categorical_variables)) {
-            "No categorical or numerical variables in current data set"
-          } else {
-            "No numerical variables in current data set"
-          }
-        } else {
-          if (is_empty(categorical_variables)) {
-            "No categorical variables in current data set"
-          } else {
-          ""
-          }
-        }
-      }
     }
   })
 
