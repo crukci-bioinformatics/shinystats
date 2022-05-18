@@ -283,7 +283,7 @@ ui <- fluidPage(
             width = 4,
             fileInput(
               "data_file",
-              "Upload file",
+              "Upload CSV or TSV file",
               accept = c(".csv", ".tsv", ".txt")
             )
           ),
@@ -313,8 +313,17 @@ ui <- fluidPage(
             )
           ),
           column(
+            width = 3,
+            radioButtons(
+              "one_sample_transformation",
+              label = "Transformation",
+              choices = c("None", "log10", "log2", "ln"),
+              selected = "None",
+              inline = TRUE
+            ),
+          ),
+          column(
             width = 2,
-            offset = 1,
             numericInput(
               "one_sample_hypothesized_mean",
               label = "Hypothesized mean",
@@ -322,7 +331,7 @@ ui <- fluidPage(
             )
           )
         ),
-        textOutput("one_sample_info")
+        em(textOutput("one_sample_info"))
       ),
       tabsetPanel(
         tabPanel(
@@ -410,20 +419,15 @@ ui <- fluidPage(
     tabPanel(
       title = "Two sample test",
       wellPanel(
-        fluidRow(
-          column(
-            width = 3,
-            checkboxInput(
-              "two_sample_paired",
-              label = "Paired observations"
-            )
-          )
+        checkboxInput(
+          "two_sample_paired",
+          label = "Paired observations"
         ),
-        fluidRow(
-          conditionalPanel(
-            condition = "input.two_sample_paired",
+        conditionalPanel(
+          condition = "input.two_sample_paired",
+          fluidRow(
             column(
-              width = 3,
+              width = 2,
               selectInput(
                 "two_sample_variable1",
                 label = "Variable 1",
@@ -431,18 +435,30 @@ ui <- fluidPage(
               )
             ),
             column(
-              width = 3,
+              width = 2,
               selectInput(
                 "two_sample_variable2",
                 label = "Variable 2",
                 choices = list()
               )
-            )
-          ),
-          conditionalPanel(
-            condition = "!input.two_sample_paired",
+            ),
             column(
               width = 3,
+              radioButtons(
+                "two_sample_paired_transformation",
+                label = "Transformation",
+                choices = c("None", "log10", "log2", "ln"),
+                selected = "None",
+                inline = TRUE
+              )
+            )
+          )
+        ),
+        conditionalPanel(
+          condition = "!input.two_sample_paired",
+          fluidRow(
+            column(
+              width = 2,
               selectInput(
                 "two_sample_categorical_variable",
                 label = "Categorical variable",
@@ -450,7 +466,7 @@ ui <- fluidPage(
               )
             ),
             column(
-              width = 3,
+              width = 2,
               selectInput(
                 "two_sample_group1",
                 label = "Group 1",
@@ -458,7 +474,7 @@ ui <- fluidPage(
               )
             ),
             column(
-              width = 3,
+              width = 2,
               selectInput(
                 "two_sample_group2",
                 label = "Group 2",
@@ -466,16 +482,26 @@ ui <- fluidPage(
               )
             ),
             column(
-              width = 3,
+              width = 2,
               selectInput(
                 "two_sample_variable",
                 label = "Variable",
                 choices = list()
               )
+            ),
+            column(
+              width = 3,
+              radioButtons(
+                "two_sample_transformation",
+                label = "Transformation",
+                choices = c("None", "log10", "log2", "ln"),
+                selected = "None",
+                inline = TRUE
+              )
             )
           )
         ),
-        textOutput("two_sample_info")
+        em(textOutput("two_sample_info"))
       ),
       tabsetPanel(
         tabPanel(
@@ -587,6 +613,12 @@ server <- function(input, output, session) {
       choices = list()
     )
 
+    updateRadioButtons(
+      session,
+      "one_sample_transformation",
+      selected = "None"
+    )
+
     updateNumericInput(
       session,
       "one_sample_hypothesized_mean",
@@ -596,8 +628,7 @@ server <- function(input, output, session) {
 
     updateCheckboxInput(
       session,
-      "one_sample_choose_number_of_bins",
-      label = "Choose number of bins",
+      "two_sample_paired",
       value = FALSE
     )
 
@@ -629,6 +660,12 @@ server <- function(input, output, session) {
       choices = list()
     )
 
+    updateRadioButtons(
+      session,
+      "two_sample_transformation",
+      selected = "None"
+    )
+
     updateSelectInput(
       session,
       "two_sample_variable1",
@@ -642,6 +679,12 @@ server <- function(input, output, session) {
       label = "Variable 2",
       choices = list()
     )
+
+    updateRadioButtons(
+      session,
+      "two_sample_paired_transformation",
+      selected = "None"
+    )
   }
 
   reactive_values <- reactiveValues(data = NULL)
@@ -650,6 +693,7 @@ server <- function(input, output, session) {
   observe({
     file <- input$data_file
     if (!is.null(file)) {
+      clear_selections()
       if (str_detect(file$name, regex("\\.csv$", ignore_case = TRUE))) {
         reactive_values$data <- read_csv(file$datapath)
       } else {
@@ -661,6 +705,7 @@ server <- function(input, output, session) {
   # select sample data set
   observe({
     sample_data <- input$sample_data
+    clear_selections()
     reactive_values$data <- datasets[[sample_data]]
   })
 
@@ -1049,20 +1094,21 @@ server <- function(input, output, session) {
         if (is_empty(numerical_variables)) {
           "No numerical variables in current data set"
         } else if (length(numerical_variables) < 2) {
-          str_c(
-            "Only one numerical variable in current data set",
-            " - need 2 for paired data"
-          )
+          "Only one numerical variable in current data set"
         } else {
           ""
         }
       } else {
         categorical_variables <- categorical_variables()
-        if (is_empty(categorical_variables)) {
-          "No categorical variables in current data set"
-        } else {
-          if (is_empty(numerical_variables)) {
+        if (is_empty(numerical_variables)) {
+          if (is_empty(categorical_variables)) {
+            "No categorical or numerical variables in current data set"
+          } else {
             "No numerical variables in current data set"
+          }
+        } else {
+          if (is_empty(categorical_variables)) {
+            "No categorical variables in current data set"
           } else {
           ""
           }
