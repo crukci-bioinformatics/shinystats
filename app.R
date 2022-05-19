@@ -319,10 +319,19 @@ create_t_distribution_plot <- function(t_test_result) {
     )
 
   plot <- plot +
+    labs(
+      x = "t",
+      title = str_c(
+        "Student's t-distribution with ",
+        round(df, 2),
+        " degrees of freedom"
+      )
+    ) +
     scale_x_continuous(limits = c(-limit, limit), expand = expansion(0, 0)) +
     scale_y_continuous(expand = expansion(0, 0)) +
     theme_minimal() +
     theme(
+      title = element_text(size = 14),
       axis.title.x = element_text(size = 16, face = "italic"),
       axis.text.x = element_text(size = 12),
       axis.line.x = element_line(),
@@ -590,6 +599,7 @@ ui <- fluidPage(
                     verbatimTextOutput("one_sample_t_test")
                   )
                 ),
+                br(),
                 fluidRow(
                   column(
                     width = 8,
@@ -1184,8 +1194,13 @@ server <- function(input, output, session) {
   output$one_sample_shapiro_wilk_test <- renderPrint({
     values <- one_sample_transformed_data()
 
+    # filter out missing values
+    values <- values[!is.na(values)]
+
     if (is_empty(values)) {
       cat("No data values")
+    } else if (length(values) < 3) {
+      cat("Too few values")
     } else {
       cat("shapiro.test(values)\n")
 
@@ -1202,6 +1217,9 @@ server <- function(input, output, session) {
   one_sample_t_test <- reactive({
     values <- one_sample_transformed_data()
     hypothesized_mean <- one_sample_hypothesized_mean()
+
+    # filter out missing values
+    values <- values[!is.na(values)]
 
     if (length(values) < 2 | is.na(hypothesized_mean)) {
       return(NULL)
@@ -1223,8 +1241,13 @@ server <- function(input, output, session) {
     values <- one_sample_transformed_data()
     hypothesized_mean <- one_sample_hypothesized_mean()
 
+    # filter out missing values
+    values <- values[!is.na(values)]
+
     if (is_empty(values)) {
       cat("No data values")
+    } else if (length(values) < 3) {
+      cat("Too few values")
     } else if (is.na(hypothesized_mean)) {
       cat("Hypothesized mean is not set")
     } else {
@@ -1251,12 +1274,16 @@ server <- function(input, output, session) {
   # one sample Wilcoxon signed rank test
   output$one_sample_wilcoxon_test <- renderPrint({
     values <- one_sample_transformed_data()
-
     hypothesized_mean <- one_sample_hypothesized_mean()
     alternative <- input$one_sample_alternative
 
+    # filter out missing values
+    values <- values[!is.na(values)]
+
     if (is_empty(values)) {
       cat("No data values")
+    } else if (length(values) < 3) {
+      cat("Too few values")
     } else if (is.na(hypothesized_mean)) {
       cat("Hypothesized mean is not set")
     } else {
