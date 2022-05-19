@@ -269,6 +269,73 @@ create_histogram <- function(values,
   histogram
 }
 
+# t-distribution plot for the given t-test result
+create_t_distribution_plot <- function(t_test_result) {
+
+  t <- t_test_result$statistic
+  df <- t_test_result$parameter["df"]
+
+  limit <- max(abs(t), qt(0.975, df)) * 1.25
+  limit <- max(limit, 4)
+
+  plot <- ggplot(tibble(t = c(-limit, limit)), aes(t))
+
+  plot <- switch(t_test_result$alternative,
+    "two.sided" = plot +
+      stat_function(
+        fun = dt, args = list(df = df),
+        xlim = c(-limit, qt(0.025, df)),
+        geom = "area", fill = "#FFB000"
+      ) +
+      stat_function(
+        fun = dt, args = list(df = df),
+        xlim = c(qt(0.975, df), limit),
+        geom = "area", fill = "#FFB000"
+      ),
+    "less" = plot +
+      stat_function(
+        fun = dt, args = list(df = df),
+        xlim = c(-limit, qt(0.05, df)),
+        geom = "area", fill = "#FFB000"
+      ),
+    "greater" = plot +
+      stat_function(
+        fun = dt, args = list(df = df),
+        xlim = c(qt(0.95, df), limit),
+        geom = "area", fill = "#FFB000"
+      )
+  )
+
+  plot <- plot + stat_function(
+    fun = dt, args = list(df = df),
+    colour = "grey50", size = 1,
+  )
+
+  plot <- plot +
+    geom_vline(
+      xintercept = t_test_result$statistic,
+      colour = "#648FFF", size = 1
+    )
+
+  plot <- plot +
+    scale_x_continuous(limits = c(-limit, limit), expand = expansion(0, 0)) +
+    scale_y_continuous(expand = expansion(0, 0)) +
+    theme_minimal() +
+    theme(
+      axis.title.x = element_text(size = 16, face = "italic"),
+      axis.text.x = element_text(size = 12),
+      axis.line.x = element_line(),
+      axis.ticks.x = element_line(),
+      axis.ticks.length = unit(2, "mm"),
+      axis.title.y = element_blank(),
+      axis.text.y = element_blank(),
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank()
+    )
+
+  plot
+}
+
 # Shiny user interface
 # ====================
 
@@ -491,6 +558,16 @@ ui <- fluidPage(
                 label = "Test",
                 choices = c("Parametric", "Non-parametric")
               ),
+              "The assumptions of the parametric one-sample t-test are that",
+              "the data values are:",
+              tags$ul(
+                tags$li("independent (values are not related to one another)"),
+                tags$li("continuous (not discrete)"),
+                tags$li(
+                  "a random sample from a population that is normally",
+                  "distributed"
+                )
+              ),
               br(),
               radioButtons(
                 "one_sample_alternative",
@@ -503,23 +580,29 @@ ui <- fluidPage(
               )
             ),
             mainPanel(
-              fluidRow(
-                column(
-                  width = 10,
-                  conditionalPanel(
-                    condition = "input.one_sample_test_type == 'Parametric'",
-                    h4("One sample t-test"),
-                    "Assumes that the data are:",
-                    tags$ul(
-                      tags$li("independent (values are not related to one another)"),
-                      tags$li("continuous (not discrete)"),
-                      tags$li("a random sample from a population that is normally distributed")
-                    ),
+              conditionalPanel(
+                condition = "input.one_sample_test_type == 'Parametric'",
+                h4("One sample t-test"),
+                fluidRow(
+                  column(
+                    width = 10,
                     verbatimTextOutput("one_sample_t_test")
-                  ),
-                  conditionalPanel(
-                    condition = "input.one_sample_test_type == 'Non-parametric'",
-                    h4("Wilcoxon signed rank test"),
+                  )
+                ),
+                fluidRow(
+                  column(
+                    width = 8,
+                    offset = 1,
+                    plotOutput("one_sample_t_plot", height = "300px")
+                  )
+                )
+              ),
+              conditionalPanel(
+                condition = "input.one_sample_test_type == 'Non-parametric'",
+                h4("Wilcoxon signed rank test"),
+                fluidRow(
+                  column(
+                    width = 10,
                     verbatimTextOutput("one_sample_wilcoxon_test")
                   )
                 )
@@ -703,11 +786,11 @@ ui <- fluidPage(
         ),
         tabPanel(
           "Assumption tests",
-          h4("Shapiro-Wilk test of normality"),
-          conditionalPanel(
-            condition = "!input.two_sample_paired",
-            h4("F test to compare two variances")
-          )
+          # h4("Shapiro-Wilk test of normality"),
+          # conditionalPanel(
+          #   condition = "!input.two_sample_paired",
+          #   h4("F test to compare two variances")
+          # )
         ),
         tabPanel(
           "Statistical tests"
@@ -1115,11 +1198,29 @@ server <- function(input, output, session) {
   })
 
   # one sample t-test
+  one_sample_t_test <- reactive({
+    values <- one_sample_transformed_data()
+    hypothesized_mean <- one_sample_hypothesized_mean()
+
+    if (length(values) < 2 | is.na(hypothesized_mean)) {
+      return(NULL)
+    }
+
+    result <- t.test(
+      values,
+      mu = hypothesized_mean,
+      alternative = input$one_sample_alternative
+    )
+
+    # override the data name
+    result$data.name <- input$one_sample_variable
+
+    result
+  })
+
   output$one_sample_t_test <- renderPrint({
     values <- one_sample_transformed_data()
-
     hypothesized_mean <- one_sample_hypothesized_mean()
-    alternative <- input$one_sample_alternative
 
     if (is_empty(values)) {
       cat("No data values")
@@ -1128,21 +1229,22 @@ server <- function(input, output, session) {
     } else {
       cat(
         "t.test(values, mu = ", hypothesized_mean,
-        ", alternative = ", alternative, ")\n",
+        ", alternative = \"", input$one_sample_alternative, "\"')\n",
         sep = ""
       )
 
-      result <- t.test(
-        values,
-        mu = hypothesized_mean,
-        alternative = alternative
-      )
-
-      # override the data name
-      result$data.name <- input$one_sample_variable
-
-      result
+      result <- one_sample_t_test()
+      if (!is.null(result)) {
+        result
+      }
     }
+  })
+
+  output$one_sample_t_plot <- renderPlot({
+      result <- one_sample_t_test()
+      if (!is.null(result)) {
+        create_t_distribution_plot(result)
+      }
   })
 
   # one sample Wilcoxon signed rank test
@@ -1159,7 +1261,7 @@ server <- function(input, output, session) {
     } else {
       cat(
         "wilcox.test(values, mu = ", hypothesized_mean,
-        ", alternative = ", alternative, ")\n",
+        ", alternative = \"", input$one_sample_alternative, "\"')\n",
         sep = ""
       )
 
@@ -1401,9 +1503,9 @@ server <- function(input, output, session) {
             pivot_longer(
               everything(),
               names_to = "statistic",
-              values_to = "difference"
+              values_to = "differences"
             ) %>%
-            mutate(difference = round(difference, digits = 3))
+            mutate(differences = round(differences, digits = 3))
 
           summary_statistics <- left_join(
             summary_statistics,
