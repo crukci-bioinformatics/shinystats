@@ -11,16 +11,6 @@ options(scipen = 999)
 # ========
 
 datasets <- list(
-  "Star Wars" = starwars,
-  "Effectiveness of insect sprays" = InsectSprays,
-  "Plant growth for two different treatment conditions and a control" =
-    PlantGrowth,
-  "Sibling chick weights reared in confinement or on open range" = read_csv(
-    "datasets/chick_weights.csv",
-    col_types = "cdd"
-  ),
-  "Empty dataset" = tibble(),
-  "Non-numerical dataset" = tibble(letter = letters),
   "2.1 Effect of disease X on height" = read_csv(
     "datasets/DiseaseX.csv",
     col_types = "cd"
@@ -80,7 +70,18 @@ datasets <- list(
   "4.8 Sex effect on salaries of professors" = read_csv(
     "datasets/ProfessorialSalaries.csv",
     col_types = "fd"
-  )
+  ),
+  "Star Wars" = starwars,
+  "Effectiveness of insect sprays" = InsectSprays,
+  "Plant growth for two different treatment conditions and a control" =
+    PlantGrowth,
+  "Sibling chick weights reared in confinement or on open range" = read_csv(
+    "datasets/chick_weights.csv",
+    col_types = "cdd"
+  ),
+  "Categories" = tibble(Group = c("WT", "WT", "WT", "KO", "KO", "KO")),
+  "Letters" = tibble(letter = letters),
+  "Empty" = tibble()
 )
 
 # useful functions
