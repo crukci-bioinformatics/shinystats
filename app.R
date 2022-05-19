@@ -12,7 +12,15 @@ options(scipen = 999)
 
 datasets <- list(
   "Star Wars" = starwars,
-  "Fisher's iris data" = iris,
+  "Effectiveness of insect sprays" = InsectSprays,
+  "Plant growth for two different treatment conditions and a control" =
+    PlantGrowth,
+  "Sibling chick weights reared in confinement or on open range" = read_csv(
+    "datasets/chick_weights.csv",
+    col_types = "cdd"
+  ),
+  "Empty dataset" = tibble(),
+  "Non-numerical dataset" = tibble(letter = letters),
   "2.1 Effect of disease X on height" = read_csv(
     "datasets/DiseaseX.csv",
     col_types = "cd"
@@ -98,14 +106,14 @@ summary_statistics <- function(x) {
   ))
 }
 
-# log transform the given set of values
-log_transform <- function(values, type) {
+# transform the given set of values
+transform <- function(values, type) {
   switch(
     type,
-    None = values,
-    log10 = log10(values),
-    log2 = log2(values),
-    ln = log(values)
+    none = values,
+    natural_log = log(values),
+    square_root = sqrt(values),
+    cube_root = sign(values) * abs(values) ^ (1 / 3)
   )
 }
 
@@ -194,7 +202,6 @@ create_histogram <- function(values,
 
   if (is.null(number_of_bins)) {
     number_of_bins <- nclass.Sturges(values)
-    # message("Sturges number of bins: ", number_of_bins)
   }
 
   breaks <- pretty(
@@ -203,11 +210,8 @@ create_histogram <- function(values,
     min.n = 1
   )
 
-  # message("Actual number of bins: ", length(breaks) - 1)
-  # message("Breaks: ", str_c(as.character(breaks), collapse = ", "))
 
   limits <- range(c(breaks, limits), na.rm = TRUE)
-  # message("Limits: ", str_c(limits, collapse = ", "))
 
   if (show_normal_distribution) {
     histogram <- histogram +
@@ -324,27 +328,34 @@ ui <- fluidPage(
             )
           ),
           column(
-            width = 3,
-            radioButtons(
-              "one_sample_transformation",
-              label = "Transformation",
-              choices = c("None", "log10", "log2", "ln"),
-              selected = "None",
-              inline = TRUE
-            ),
-          ),
-          column(
             width = 2,
             numericInput(
               "one_sample_hypothesized_mean",
               label = "Hypothesized mean",
               value = NA
             )
+          ),
+          column(
+            width = 4,
+            radioButtons(
+              "one_sample_transformation",
+              label = "Transformation",
+              choices = c(
+                "None" = "none",
+                "Natural log" = "natural_log",
+                "Square root" = "square_root",
+                "Cube root" = "cube_root"
+              ),
+              selected = "none",
+              inline = TRUE
+            )
           )
         ),
         em(textOutput("one_sample_info"))
       ),
       tabsetPanel(
+        id = "one_sample_tabs",
+        selected = "Plots",
         tabPanel(
           "Summary statistics",
           br(),
@@ -360,7 +371,7 @@ ui <- fluidPage(
                 label = "Show hypothesized mean",
                 value = TRUE
               ),
-              h5("Box plot"),
+              h5("Box plot", style = "margin-top: 25px"),
               checkboxInput(
                 "one_sample_show_points",
                 label = "Show points on box plot",
@@ -376,7 +387,7 @@ ui <- fluidPage(
                 label = "Overlay density on box plot",
                 value = FALSE
               ),
-              h5("Histogram"),
+              h5("Histogram", style = "margin-top: 25px"),
               checkboxInput(
                 "one_sample_choose_number_of_bins",
                 label = "Choose number of bins",
@@ -423,7 +434,98 @@ ui <- fluidPage(
           )
         ),
         tabPanel(
-          "Statistical analysis"
+          "Assumption tests",
+          br(),
+          fluidRow(
+            column(
+              width = 6,
+              helpText(
+                "This tab provides preliminary tests that can help with",
+                "assessing the assumptions of a parametric test, e.g.",
+                "t-test. Preliminary tests of assumptions such as normality",
+                "are controversial and often criticised within the statistics",
+                "community."
+              )
+            )
+          ),
+          h4("Shapiro-Wilk test of normality"),
+          fluidRow(
+            column(
+              width = 6,
+              verbatimTextOutput("one_sample_shapiro_wilk_test"),
+              helpText(
+                "Null hypothesis: the data come from a normally distributed",
+                "population."
+              ),
+              helpText(
+                "The null hypothesis can be rejected if the p-value is less",
+                "than 0.05, suggesting that the data come from a population",
+                "that does not follow a normal distribution."
+              ),
+              helpText(
+                "If the p-value is not below the threshold for significance",
+                "the null hypothesis cannot be rejected which means there is",
+                "insufficient evidence that the data are not normal. This is",
+                "not the same as accepting that the data come from a normal",
+                "distribution, i.e. it does not prove that the null hypothesis",
+                "is true."
+              ),
+              helpText(
+                "Caution is advised when using a preliminary test for",
+                "normality to decide whether a parametric or non-parametric",
+                "test should subsequently be used, particularly when the",
+                "sample size is small. It is often better to make your own",
+                "assessment by looking at box plots, density plots and",
+                "histograms."
+              )
+            )
+          )
+        ),
+        tabPanel(
+          "Statistical tests",
+          br(),
+          sidebarLayout(
+            sidebarPanel(
+              radioButtons(
+                "one_sample_test_type",
+                label = "Test",
+                choices = c("Parametric", "Non-parametric")
+              ),
+              br(),
+              radioButtons(
+                "one_sample_alternative",
+                "Alternative hypothesis",
+                choices = c(
+                  "Two-sided" = "two.sided",
+                  "Greater" = "greater",
+                  "Less" = "less"
+                )
+              )
+            ),
+            mainPanel(
+              fluidRow(
+                column(
+                  width = 10,
+                  conditionalPanel(
+                    condition = "input.one_sample_test_type == 'Parametric'",
+                    h4("One sample t-test"),
+                    "Assumes that the data are:",
+                    tags$ul(
+                      tags$li("independent (values are not related to one another)"),
+                      tags$li("continuous (not discrete)"),
+                      tags$li("a random sample from a population that is normally distributed")
+                    ),
+                    verbatimTextOutput("one_sample_t_test")
+                  ),
+                  conditionalPanel(
+                    condition = "input.one_sample_test_type == 'Non-parametric'",
+                    h4("Wilcoxon signed rank test"),
+                    verbatimTextOutput("one_sample_wilcoxon_test")
+                  )
+                )
+              )
+            )
+          )
         )
       )
     ),
@@ -454,12 +556,17 @@ ui <- fluidPage(
               )
             ),
             column(
-              width = 3,
+              width = 4,
               radioButtons(
                 "two_sample_paired_transformation",
                 label = "Transformation",
-                choices = c("None", "log10", "log2", "ln"),
-                selected = "None",
+                choices = c(
+                  "None" = "none",
+                  "Natural log" = "natural_log",
+                  "Square root" = "square_root",
+                  "Cube root" = "cube_root"
+                ),
+                selected = "none",
                 inline = TRUE
               )
             )
@@ -501,12 +608,17 @@ ui <- fluidPage(
               )
             ),
             column(
-              width = 3,
+              width = 4,
               radioButtons(
                 "two_sample_transformation",
                 label = "Transformation",
-                choices = c("None", "log10", "log2", "ln"),
-                selected = "None",
+                choices = c(
+                  "None" = "none",
+                  "Natural log" = "natural_log",
+                  "Square root" = "square_root",
+                  "Cube root" = "cube_root"
+                ),
+                selected = "none",
                 inline = TRUE
               )
             )
@@ -515,6 +627,8 @@ ui <- fluidPage(
         em(textOutput("two_sample_info"))
       ),
       tabsetPanel(
+        id = "two_sample_tabs",
+        selected = "Plots",
         tabPanel(
           "Summary statistics",
           br(),
@@ -588,7 +702,15 @@ ui <- fluidPage(
           )
         ),
         tabPanel(
-          "Statistical analysis"
+          "Assumption tests",
+          h4("Shapiro-Wilk test of normality"),
+          conditionalPanel(
+            condition = "!input.two_sample_paired",
+            h4("F test to compare two variances")
+          )
+        ),
+        tabPanel(
+          "Statistical tests"
         )
       )
     )
@@ -620,21 +742,37 @@ server <- function(input, output, session) {
     updateSelectInput(
       session,
       "one_sample_variable",
-      label = "Variable",
       choices = list()
     )
 
     updateRadioButtons(
       session,
       "one_sample_transformation",
-      selected = "None"
+      selected = "none"
     )
 
     updateNumericInput(
       session,
       "one_sample_hypothesized_mean",
-      label = "Hypothesized mean",
       value = NA
+    )
+
+    updateTabsetPanel(
+      session,
+      "one_sample_tabs",
+      selected = "Plots"
+    )
+
+    updateCheckboxInput(
+      session,
+      "one_sample_test_type",
+      value = "Parametric"
+    )
+
+    updateRadioButtons(
+      session,
+      "one_sample_alternative",
+      selected = "two.sided"
     )
 
     updateCheckboxInput(
@@ -646,55 +784,55 @@ server <- function(input, output, session) {
     updateSelectInput(
       session,
       "two_sample_categorical_variable",
-      label = "Categorical variable",
       choices = list()
     )
 
     updateSelectInput(
       session,
       "two_sample_group1",
-      label = "Group 1",
       choices = list()
     )
 
     updateSelectInput(
       session,
       "two_sample_group2",
-      label = "Group 2",
       choices = list()
     )
 
     updateSelectInput(
       session,
       "two_sample_variable",
-      label = "Variable",
       choices = list()
     )
 
     updateRadioButtons(
       session,
       "two_sample_transformation",
-      selected = "None"
+      selected = "none"
     )
 
     updateSelectInput(
       session,
       "two_sample_variable1",
-      label = "Variable 1",
       choices = list()
     )
 
     updateSelectInput(
       session,
       "two_sample_variable2",
-      label = "Variable 2",
       choices = list()
     )
 
     updateRadioButtons(
       session,
       "two_sample_paired_transformation",
-      selected = "None"
+      selected = "none"
+    )
+
+    updateTabsetPanel(
+      session,
+      "two_sample_tabs",
+      selected = "Plots"
     )
   }
 
@@ -796,22 +934,6 @@ server <- function(input, output, session) {
   # one sample test
   # ---------------
 
-  # information message about the current data set and whether there are any
-  # numerical columns/variables
-  output$one_sample_info <- renderText({
-    data <- data()
-    if (is_empty(data)) {
-      "No data loaded"
-    } else {
-      numerical_variables <- numerical_variables()
-      if (is_empty(numerical_variables)) {
-        "No numerical variables in current data set"
-      } else {
-        ""
-      }
-    }
-  })
-
   # update variable selection list for one-sample test
   observe({
     updateSelectInput(
@@ -841,26 +963,67 @@ server <- function(input, output, session) {
       numeric()
     } else {
       data %>%
-        pull(variable) %>%
-        log_transform(input$one_sample_transformation)
+        pull(variable)
     }
+  })
+
+  one_sample_transformed_data <- reactive({
+    transform(one_sample_data(), input$one_sample_transformation)
   })
 
   # hypothesized mean, log transformed if required
   one_sample_hypothesized_mean <- reactive({
-    log_transform(
+    transform(
       input$one_sample_hypothesized_mean,
       input$one_sample_transformation
     )
   })
 
+  # information message about the current data set and whether there are any
+  # numerical columns/variables
+  output$one_sample_info <- renderText({
+    data <- data()
+
+    if (is_empty(data)) {
+      return("No data loaded")
+    }
+
+    numerical_variables <- numerical_variables()
+    if (is_empty(numerical_variables)) {
+      return("No numerical variables in current data set")
+    }
+
+    values <- one_sample_data()
+
+    # filter out missing values
+    values <- values[!is.na(values)]
+
+    transform <- input$one_sample_transformation
+
+    if (transform == "natural_log" & sum(values < 0) > 0) {
+      return(
+        "Log transformation may not be suitable as there are negative values."
+      )
+    }
+    if (transform == "natural_log" & sum(values == 0) > 0) {
+      return("Log transformation may not be suitable as there are zero values.")
+    }
+
+    if (transform == "square_root" & sum(values < 0) > 0) {
+      return(str_c(
+        "Square root transformation may not be suitable as there are negative ",
+        "values."
+      ))
+    }
+  })
+
   # summary statistics table
   output$one_sample_summary_statistics <- DT::renderDataTable({
-      data <- one_sample_data()
-      if (is_empty(data)) {
+      values <- one_sample_transformed_data()
+      if (is_empty(values)) {
         NULL
       } else {
-        summary_statistics <- summary_statistics(data) %>%
+        summary_statistics <- summary_statistics(values) %>%
           pivot_longer(
             everything(),
             names_to = "statistic",
@@ -884,10 +1047,10 @@ server <- function(input, output, session) {
 
   # boxplot and histogram
   output$one_sample_plots <- renderPlot({
-    data <- one_sample_data()
+    values <- one_sample_transformed_data()
 
     # filter out missing values
-    values <- data[!is.na(data)]
+    values <- values[!is.na(values)]
 
     if (is_empty(values)) {
       return(NULL)
@@ -931,6 +1094,86 @@ server <- function(input, output, session) {
 
     boxplot + plot_spacer() + histogram +
       plot_layout(heights = c(1, 0.25, 1))
+  })
+
+  # one sample Shapiro-Wilk test
+  output$one_sample_shapiro_wilk_test <- renderPrint({
+    values <- one_sample_transformed_data()
+
+    if (is_empty(values)) {
+      cat("No data values")
+    } else {
+      cat("shapiro.test(values)\n")
+
+      result <- shapiro.test(values)
+
+      # override the data name
+      result$data.name <- input$one_sample_variable
+
+      result
+    }
+  })
+
+  # one sample t-test
+  output$one_sample_t_test <- renderPrint({
+    values <- one_sample_transformed_data()
+
+    hypothesized_mean <- one_sample_hypothesized_mean()
+    alternative <- input$one_sample_alternative
+
+    if (is_empty(values)) {
+      cat("No data values")
+    } else if (is.na(hypothesized_mean)) {
+      cat("Hypothesized mean is not set")
+    } else {
+      cat(
+        "t.test(values, mu = ", hypothesized_mean,
+        ", alternative = ", alternative, ")\n",
+        sep = ""
+      )
+
+      result <- t.test(
+        values,
+        mu = hypothesized_mean,
+        alternative = alternative
+      )
+
+      # override the data name
+      result$data.name <- input$one_sample_variable
+
+      result
+    }
+  })
+
+  # one sample Wilcoxon signed rank test
+  output$one_sample_wilcoxon_test <- renderPrint({
+    values <- one_sample_transformed_data()
+
+    hypothesized_mean <- one_sample_hypothesized_mean()
+    alternative <- input$one_sample_alternative
+
+    if (is_empty(values)) {
+      cat("No data values")
+    } else if (is.na(hypothesized_mean)) {
+      cat("Hypothesized mean is not set")
+    } else {
+      cat(
+        "wilcox.test(values, mu = ", hypothesized_mean,
+        ", alternative = ", alternative, ")\n",
+        sep = ""
+      )
+
+      result <- wilcox.test(
+        values,
+        mu = hypothesized_mean,
+        alternative = alternative
+      )
+
+      # override the data name
+      result$data.name <- input$one_sample_variable
+
+      result
+    }
   })
 
   # two sample test
@@ -1067,7 +1310,7 @@ server <- function(input, output, session) {
             values_to = "value"
           ) %>%
           mutate(group = factor(group, levels = c(variable1, variable2))) %>%
-          mutate(value = log_transform(
+          mutate(value = transform(
             value,
             input$two_sample_paired_transformation
           ))
@@ -1094,7 +1337,7 @@ server <- function(input, output, session) {
           `colnames<-`(c("group", "value")) %>%
           filter(group %in% c(group1, group2)) %>%
           mutate(group = factor(group, levels = c(group1, group2))) %>%
-          mutate(value = log_transform(
+          mutate(value = transform(
             value,
             input$two_sample_transformation
           ))
@@ -1123,7 +1366,7 @@ server <- function(input, output, session) {
           select(all_of(c(variable1, variable2))) %>%
           transmute(difference = get(variable2) - get(variable1)) %>%
           pull(difference) %>%
-          log_transform(input$two_sample_paired_transformation)
+          transform(input$two_sample_paired_transformation)
       }
     } else {
         numeric()
