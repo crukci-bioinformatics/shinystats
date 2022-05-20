@@ -25,7 +25,7 @@ datasets <- list(
   ),
   "3.2 Blood vessel formation" = read_csv(
     "datasets/BloodVesselFormation2.csv",
-    col_types = "dd"
+    col_types = "cdd"
   ),
   "3.3 NIBP gene expression in breast cancer patients" = read_csv(
     "datasets/NIBPExpression.csv",
@@ -49,7 +49,7 @@ datasets <- list(
   ),
   "4.3 Effect of bran on diet of patients with diverticulosis" = read_csv(
     "datasets/BranDiverticulosis.csv",
-    col_types = "cd"
+    col_types = "fd"
   ),
   "4.4 Effect on repetitive behaviour of autism drug" = read_csv(
     "datasets/AutismDrugRepetitiveBehaviour.csv",
@@ -78,6 +78,24 @@ datasets <- list(
   "Sibling chick weights reared in confinement or on open range" = read_csv(
     "datasets/chick_weights.csv",
     col_types = "cdd"
+  ),
+  "Test1" = tibble(
+    Before = c(12, 13, 10, 10, 16, 15, 14),
+    After = c(10, 12, 8, 9, 15, 12, 13)
+    # Group = c(rep("WT", 25), rep("KO", 25)),
+    # Expression = round(c(rnorm(25, 0.2, 0.01), rnorm(25, 0.21, 0.015)), digits = 3)
+  ),
+  "Test2" = tibble(
+    Group = c(rep("WT", 25), rep("KO", 25)),
+    Expression = -round(c(rnorm(25, 0.2, 0.01), rnorm(25, 0.21, 0.015)), digits = 3)
+  ),
+  "Test3" = tibble(
+    A = -round(rnorm(25, 0.2, 0.01), digits = 3),
+    B = -round(rnorm(25, 0.3, 0.015), digits = 3)
+  ),
+  "Test4" = tibble(
+    Group = c(rep("WT", 25), rep("KO", 25)),
+    Expression = round(c(rnorm(25, 0.1, 0.01), rnorm(25, -0.1, 0.015)), digits = 3)
   ),
   "Categories" = tibble(Group = c("WT", "WT", "WT", "KO", "KO", "KO")),
   "Letters" = tibble(letter = letters),
@@ -155,7 +173,7 @@ create_boxplot <- function(values,
       )
   }
 
-  if (!is.null(xintercept) && !is.na(xintercept)) {
+  if (!is.null(xintercept) && is.finite(xintercept)) {
     boxplot <- boxplot +
       geom_vline(
         xintercept = xintercept,
@@ -171,7 +189,8 @@ create_boxplot <- function(values,
 
   boxplot <- boxplot +
     scale_x_continuous(limits = limits) +
-    scale_fill_manual(values = c("#648FFF", "#DC267F")) +
+    scale_y_discrete(drop = FALSE) +
+    scale_fill_manual(values = c("#648FFF", "#DC267F"), drop = FALSE) +
     labs(x = name) +
     theme_minimal() +
     theme(
@@ -241,7 +260,7 @@ create_histogram <- function(values,
       )
   }
 
-  if (!is.null(xintercept) && !is.na(xintercept)) {
+  if (!is.null(xintercept) && is.finite(xintercept)) {
     histogram <- histogram +
       geom_vline(
         xintercept = xintercept,
@@ -254,9 +273,9 @@ create_histogram <- function(values,
   histogram <- histogram +
     scale_x_continuous(limits = limits) +
     scale_y_continuous(expand = expansion(mult = c(0, 0.05))) +
-    scale_fill_manual(values = c("#648FFF", "#DC267F")) +
+    scale_fill_manual(values = c("#648FFF", "#DC267F"), drop = FALSE) +
     labs(x = name) +
-    facet_wrap(vars(group)) +
+    facet_wrap(vars(group), drop = FALSE) +
     theme_minimal() +
     theme(
       strip.text = element_text(size = 14),
@@ -382,15 +401,16 @@ ui <- fluidPage(
           column(
             width = 6,
             offset = 1,
-            selectInput(
+            selectizeInput(
               "sample_data",
               label = "Sample data sets",
-              choices = names(datasets)
+              choices = names(datasets),
+              selected = "3.1 Biological process duraction"
             )
           )
         )
       ),
-      DT::dataTableOutput("uploaded_data_table", width = "97.5%")
+      DT::dataTableOutput("data_table", width = "50%")
     ),
     tabPanel(
       title = "One sample test",
@@ -796,11 +816,76 @@ ui <- fluidPage(
         ),
         tabPanel(
           "Assumption tests",
-          # h4("Shapiro-Wilk test of normality"),
-          # conditionalPanel(
-          #   condition = "!input.two_sample_paired",
-          #   h4("F test to compare two variances")
-          # )
+          br(),
+          fluidRow(
+            column(
+              width = 6,
+              helpText(
+                "This tab provides preliminary tests that can help with",
+                "assessing the assumptions of a parametric test, e.g.",
+                "t-test. Preliminary tests of assumptions such as normality",
+                "are controversial and often criticised within the statistics",
+                "community."
+              )
+            )
+          ),
+          h4("Shapiro-Wilk test of normality"),
+          conditionalPanel(
+            condition = "input.two_sample_paired",
+            fluidRow(
+              column(
+                width = 6,
+                verbatimTextOutput("two_sample_paired_shapiro_wilk")
+              )
+            )
+          ),
+          conditionalPanel(
+            condition = "!input.two_sample_paired",
+            fluidRow(
+              column(
+                width = 6,
+                verbatimTextOutput("two_sample_shapiro_wilk_test1")
+              ),
+              column(
+                width = 6,
+                verbatimTextOutput("two_sample_shapiro_wilk_test2")
+              )
+            )
+          ),
+          fluidRow(
+            column(
+              width = 6,
+              helpText(
+                "Null hypothesis: the data come from a normally distributed",
+                "population."
+              ),
+              helpText(
+                "The null hypothesis can be rejected if the p-value is less",
+                "than 0.05, suggesting that the data come from a population",
+                "that does not follow a normal distribution."
+              ),
+              helpText(
+                "If the null hypothesis can't be rejected, this means there is",
+                "insufficient evidence that the data are not normal. This is",
+                "not the same as accepting that the data come from a normal",
+                "distribution, i.e. it does not prove that the null hypothesis",
+                "is true."
+              ),
+              helpText(
+                "Caution is advised when using a preliminary test for",
+                "normality to decide whether a parametric or non-parametric",
+                "test should subsequently be used, particularly when the",
+                "sample size is small. It is often better to make your own",
+                "assessment by looking at box plots, density plots and",
+                "histograms."
+              )
+            )
+          ),
+          conditionalPanel(
+            condition = "!input.two_sample_paired",
+            br(),
+            h4("F test to compare two variances")
+          )
         ),
         tabPanel(
           "Statistical tests"
@@ -1018,8 +1103,12 @@ server <- function(input, output, session) {
   })
 
   # table displaying uploaded data
-  output$uploaded_data_table <- DT::renderDataTable({
-      DT::datatable(data(), rownames = FALSE)
+  output$data_table <- DT::renderDataTable({
+      DT::datatable(
+        data(),
+        rownames = FALSE,
+        selection = "single"
+      )
     },
     server = TRUE
   )
@@ -1089,20 +1178,20 @@ server <- function(input, output, session) {
     values <- one_sample_data()
 
     # filter out missing values
-    values <- values[!is.na(values)]
+    values <- values[is.finite(values)]
 
     transform <- input$one_sample_transformation
 
-    if (transform == "natural_log" & sum(values < 0) > 0) {
+    if (transform == "natural_log" & any(values < 0)) {
       return(
         "Log transformation may not be suitable as there are negative values."
       )
     }
-    if (transform == "natural_log" & sum(values == 0) > 0) {
+    if (transform == "natural_log" & any(values == 0)) {
       return("Log transformation may not be suitable as there are zero values.")
     }
 
-    if (transform == "square_root" & sum(values < 0) > 0) {
+    if (transform == "square_root" & any(values < 0)) {
       return(str_c(
         "Square root transformation may not be suitable as there are negative ",
         "values."
@@ -1143,7 +1232,7 @@ server <- function(input, output, session) {
     values <- one_sample_transformed_data()
 
     # filter out missing values
-    values <- values[!is.na(values)]
+    values <- values[is.finite(values)]
 
     if (is_empty(values)) {
       return(NULL)
@@ -1154,7 +1243,7 @@ server <- function(input, output, session) {
     xintercept <- NULL
     if (input$one_sample_show_hypothesized_mean) {
       xintercept <- one_sample_hypothesized_mean()
-      if (is.na(xintercept)) {
+      if (!is.finite(xintercept)) {
         xintercept <- NULL
       }
     }
@@ -1194,7 +1283,7 @@ server <- function(input, output, session) {
     values <- one_sample_transformed_data()
 
     # filter out missing values
-    values <- values[!is.na(values)]
+    values <- values[is.finite(values)]
 
     if (is_empty(values)) {
       cat("No data values")
@@ -1218,9 +1307,9 @@ server <- function(input, output, session) {
     hypothesized_mean <- one_sample_hypothesized_mean()
 
     # filter out missing values
-    values <- values[!is.na(values)]
+    values <- values[is.finite(values)]
 
-    if (length(values) < 2 | is.na(hypothesized_mean)) {
+    if (length(values) < 2 | !is.finite(hypothesized_mean)) {
       return(NULL)
     }
 
@@ -1241,7 +1330,7 @@ server <- function(input, output, session) {
     hypothesized_mean <- one_sample_hypothesized_mean()
 
     # filter out missing values
-    values <- values[!is.na(values)]
+    values <- values[is.finite(values)]
 
     if (is_empty(values)) {
       cat("No data values")
@@ -1249,6 +1338,8 @@ server <- function(input, output, session) {
       cat("Too few values")
     } else if (is.na(hypothesized_mean)) {
       cat("Hypothesized mean is not set")
+    } else if (!is.finite(hypothesized_mean)) {
+      cat("Hypothesized mean is not finite")
     } else {
       cat(
         "t.test(values, mu = ", hypothesized_mean,
@@ -1277,7 +1368,7 @@ server <- function(input, output, session) {
     alternative <- input$one_sample_alternative
 
     # filter out missing values
-    values <- values[!is.na(values)]
+    values <- values[is.finite(values)]
 
     if (is_empty(values)) {
       cat("No data values")
@@ -1285,6 +1376,8 @@ server <- function(input, output, session) {
       cat("Too few values")
     } else if (is.na(hypothesized_mean)) {
       cat("Hypothesized mean is not set")
+    } else if (!is.finite(hypothesized_mean)) {
+      cat("Hypothesized mean is not finite")
     } else {
       cat(
         "wilcox.test(values, mu = ", hypothesized_mean,
@@ -1307,41 +1400,6 @@ server <- function(input, output, session) {
 
   # two sample test
   # ---------------
-
-  # information message about the current data set and whether there are any
-  # numerical columns/variables
-  output$two_sample_info <- renderText({
-    data <- data()
-    if (is_empty(data)) {
-      "No data loaded"
-    } else {
-      numerical_variables <- numerical_variables()
-      if (input$two_sample_paired) {
-        if (is_empty(numerical_variables)) {
-          "No numerical variables in current data set"
-        } else if (length(numerical_variables) < 2) {
-          "Only one numerical variable in current data set"
-        } else {
-          ""
-        }
-      } else {
-        categorical_variables <- categorical_variables()
-        if (is_empty(numerical_variables)) {
-          if (is_empty(categorical_variables)) {
-            "No categorical or numerical variables in current data set"
-          } else {
-            "No numerical variables in current data set"
-          }
-        } else {
-          if (is_empty(categorical_variables)) {
-            "No categorical variables in current data set"
-          } else {
-          ""
-          }
-        }
-      }
-    }
-  })
 
   # update categorical variable selection list for two-sample test
   observe({
@@ -1438,11 +1496,7 @@ server <- function(input, output, session) {
             names_to = "group",
             values_to = "value"
           ) %>%
-          mutate(group = factor(group, levels = c(variable1, variable2))) %>%
-          mutate(value = transform(
-            value,
-            input$two_sample_paired_transformation
-          ))
+          mutate(group = factor(group, levels = c(variable1, variable2)))
       }
     } else {
       # data expected to be structured with one categorical variable/column
@@ -1465,21 +1519,31 @@ server <- function(input, output, session) {
           select(all_of(c(categorical_variable, variable))) %>%
           `colnames<-`(c("group", "value")) %>%
           filter(group %in% c(group1, group2)) %>%
-          mutate(group = factor(group, levels = c(group1, group2))) %>%
-          mutate(value = transform(
-            value,
-            input$two_sample_transformation
-          ))
+          mutate(group = factor(group, levels = c(group1, group2)))
       }
     }
+  })
+
+  two_sample_transformed_data <- reactive({
+    data <- two_sample_data()
+
+    if (!is_empty(data)) {
+      data <- data %>%
+        mutate(value = transform(
+          value,
+          input$two_sample_transformation
+        ))
+    }
+
+    data
   })
 
   # selected data for two sample test - paired observations
   two_sample_paired_differences <- reactive({
 
-    data <- data()
-
     if (input$two_sample_paired) {
+      data <- data()
+
       # paired observations in two numerical columns
       variable1 <- input$two_sample_variable1
       variable2 <- input$two_sample_variable2
@@ -1494,17 +1558,93 @@ server <- function(input, output, session) {
         data %>%
           select(all_of(c(variable1, variable2))) %>%
           transmute(difference = get(variable2) - get(variable1)) %>%
-          pull(difference) %>%
-          transform(input$two_sample_paired_transformation)
+          pull(difference)
       }
     } else {
         numeric()
     }
   })
 
+  two_sample_transformed_diffs <- reactive({
+    transform(
+      two_sample_paired_differences(),
+      input$two_sample_paired_transformation
+    )
+  })
+
+  # information message about the current data set and whether there are any
+  # numerical columns/variables
+  output$two_sample_info <- renderText({
+    data <- data()
+
+    if (is_empty(data)) {
+      return("No data loaded")
+    }
+
+    numerical_variables <- numerical_variables()
+    categorical_variables <- categorical_variables()
+
+    paired <- input$two_sample_paired
+
+    if (paired) {
+      if (is_empty(numerical_variables)) {
+        return("No numerical variables in current data set")
+      } else if (length(numerical_variables) < 2) {
+        return("Only one numerical variable in current data set")
+      }
+    } else {
+      if (is_empty(numerical_variables)) {
+        if (is_empty(categorical_variables)) {
+          return("No categorical or numerical variables in current data set")
+        } else {
+          return("No numerical variables in current data set")
+        }
+      } else {
+        if (is_empty(categorical_variables)) {
+          return("No categorical variables in current data set")
+        }
+      }
+    }
+
+    data <- two_sample_data()
+
+    if (!is_empty(data)) {
+
+      if (paired) {
+        transform <- input$two_sample_paired_transformation
+        values <- two_sample_paired_differences()
+      } else {
+        transform <- input$two_sample_transformation
+        values <- pull(data, value)
+      }
+
+      # filter out missing values
+      values <- values[is.finite(values)]
+
+      if (transform == "natural_log" & any(values < 0)) {
+        return(
+          "Log transformation may not be suitable as there are negative values."
+        )
+      }
+      if (transform == "natural_log" & any(values == 0)) {
+        return(str_c(
+          "Log transformation may not be suitable as there are zero ",
+          "values."
+        ))
+      }
+
+      if (transform == "square_root" & any(values < 0)) {
+        return(str_c(
+          "Square root transformation may not be suitable as there are ",
+          "negative values."
+        ))
+      }
+    }
+  })
+
   # summary statistics table
   output$two_sample_summary_statistics <- DT::renderDataTable({
-      data <- two_sample_data()
+      data <- two_sample_transformed_data()
       if (nrow(data) == 0) {
         NULL
       } else {
@@ -1526,7 +1666,7 @@ server <- function(input, output, session) {
 
         if (input$two_sample_paired) {
           difference_statistics <-
-            summary_statistics(two_sample_paired_differences()) %>%
+            summary_statistics(two_sample_transformed_diffs()) %>%
             pivot_longer(
               everything(),
               names_to = "statistic",
@@ -1559,12 +1699,12 @@ server <- function(input, output, session) {
 
   # boxplots and histograms
   output$two_sample_plots <- renderPlot({
-    data <- two_sample_data()
+    data <- two_sample_transformed_data()
     if (is_empty(data)) {
       return(NULL)
     }
 
-    data <- filter(data, !is.na(value))
+    data <- filter(data, is.finite(value))
     if (nrow(data) == 0) {
       return(NULL)
     }
@@ -1606,9 +1746,15 @@ server <- function(input, output, session) {
 
     if (input$two_sample_paired) {
 
-      differences <- two_sample_paired_differences()
-      if (!is_empty(differences)) {
+      differences <- two_sample_transformed_diffs()
 
+      # filter out missing values
+      differences <- differences[is.finite(differences)]
+
+      difference_boxplot <- plot_spacer()
+      difference_histogram <- plot_spacer()
+
+      if (!is_empty(differences)) {
         difference_boxplot <- create_boxplot(
           differences,
           name = "differences",
@@ -1630,16 +1776,39 @@ server <- function(input, output, session) {
           number_of_bins = number_of_bins,
           show_normal_distribution = input$two_sample_show_normal_distribution
         )
-
-        plots <-
-          boxplot + plot_spacer() + difference_boxplot +
-          plot_spacer() + plot_spacer() + plot_spacer() +
-          histogram + plot_spacer() + difference_histogram +
-          plot_layout(widths = c(2, 0.25, 1), heights = c(1, 0.25, 1))
       }
+
+      plots <-
+        boxplot + plot_spacer() + difference_boxplot +
+        plot_spacer() + plot_spacer() + plot_spacer() +
+        histogram + plot_spacer() + difference_histogram +
+        plot_layout(widths = c(2, 0.25, 1), heights = c(1, 0.25, 1))
     }
 
     plots
+  })
+
+  # two sample Shapiro-Wilk test
+  output$two_sample_paired_shapiro_wilk <- renderPrint({
+    values <- two_sample_transformed_diffs()
+
+    # filter out missing values
+    values <- values[is.finite(values)]
+
+    if (is_empty(values)) {
+      cat("No data values")
+    } else if (length(values) < 3) {
+      cat("Too few values")
+    } else {
+      cat("shapiro.test(differences)\n")
+
+      result <- shapiro.test(values)
+
+      # override the data name
+      result$data.name <- "differences"
+
+      result
+    }
   })
 
 }
