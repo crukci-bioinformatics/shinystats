@@ -328,10 +328,10 @@ create_t_distribution_plot <- function(t_test_result) {
       )
     ) +
     scale_x_continuous(limits = c(-limit, limit), expand = expansion(0, 0)) +
-    scale_y_continuous(expand = expansion(0, 0)) +
+    scale_y_continuous(expand = expansion(mult = c(0, 0.05))) +
     theme_minimal() +
     theme(
-      title = element_text(size = 14),
+      title = element_text(size = 12),
       axis.title.x = element_text(size = 16, face = "italic"),
       axis.text.x = element_text(size = 12),
       axis.line.x = element_line(),
@@ -540,8 +540,7 @@ ui <- fluidPage(
                 "that does not follow a normal distribution."
               ),
               helpText(
-                "If the p-value is not below the threshold for significance",
-                "the null hypothesis cannot be rejected which means there is",
+                "If the null hypothesis can't be rejected, this means there is",
                 "insufficient evidence that the data are not normal. This is",
                 "not the same as accepting that the data come from a normal",
                 "distribution, i.e. it does not prove that the null hypothesis",
