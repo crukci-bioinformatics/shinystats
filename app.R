@@ -823,15 +823,19 @@ ui <- fluidPage(
               helpText(
                 "This tab provides preliminary tests that can help with",
                 "assessing the assumptions of a parametric test, e.g.",
-                "t-test. Preliminary tests of assumptions such as normality",
-                "are controversial and often criticised within the statistics",
-                "community."
+                "t-test. Use of preliminary tests of the assumptions such as",
+                "normality or equal variance between groups are controversial",
+                "and often criticised within the statistics community."
               )
             )
           ),
           h4("Shapiro-Wilk test of normality"),
           conditionalPanel(
             condition = "input.two_sample_paired",
+            helpText(
+              "The test is run on the differences between pairs of ",
+              "observations."
+            ),
             fluidRow(
               column(
                 width = 6,
@@ -841,13 +845,14 @@ ui <- fluidPage(
           ),
           conditionalPanel(
             condition = "!input.two_sample_paired",
+            helpText("Tests are run for each of the two groups."),
             fluidRow(
               column(
-                width = 6,
+                width = 5,
                 verbatimTextOutput("two_sample_shapiro_wilk_test1")
               ),
               column(
-                width = 6,
+                width = 5,
                 verbatimTextOutput("two_sample_shapiro_wilk_test2")
               )
             )
@@ -883,8 +888,24 @@ ui <- fluidPage(
           ),
           conditionalPanel(
             condition = "!input.two_sample_paired",
-            br(),
-            h4("F test to compare two variances")
+
+            h4("F test to compare two variances"),
+            fluidRow(
+              column(
+                width = 6,
+                helpText(
+                  "The F-test of equality of variances is a test for the null",
+                  "hypothesis that two normal populations have the same",
+                  "variance."
+                ),
+                verbatimTextOutput("two_sample_variance_test"),
+                helpText(
+                  "Treat the result of this test with caution; it is often",
+                  "better assess differences in variance between the two",
+                  "groups by inspecting the box and density plots."
+                )
+              )
+            )
           )
         ),
         tabPanel(
@@ -1788,7 +1809,65 @@ server <- function(input, output, session) {
     plots
   })
 
-  # two sample Shapiro-Wilk test
+  # two sample Shapiro-Wilk test - first group
+  output$two_sample_shapiro_wilk_test1 <- renderPrint({
+    data <- two_sample_transformed_data()
+
+    if (is_empty(data)) {
+      cat(" ")
+    } else {
+      variable <- input$two_sample_group1
+
+      values <- data %>%
+        filter(group == variable) %>%
+        filter(is.finite(value)) %>%
+        pull(value)
+
+      if (length(values) < 3) {
+        cat("Too few values")
+      } else {
+        cat("shapiro.test(group1)\n")
+
+        result <- shapiro.test(values)
+
+        # override the data name
+        result$data.name <- variable
+
+        result
+      }
+    }
+  })
+
+  # two sample Shapiro-Wilk test - second group
+  output$two_sample_shapiro_wilk_test2 <- renderPrint({
+    data <- two_sample_transformed_data()
+
+    if (is_empty(data)) {
+      cat(" ")
+    } else {
+      variable <- input$two_sample_group2
+
+      values <- data %>%
+        filter(group == variable) %>%
+        filter(is.finite(value)) %>%
+        pull(value)
+
+      if (length(values) < 3) {
+        cat("Too few values")
+      } else {
+        cat("shapiro.test(group2)\n")
+
+        result <- shapiro.test(values)
+
+        # override the data name
+        result$data.name <- variable
+
+        result
+      }
+    }
+  })
+
+  # two sample Shapiro-Wilk test for paired observation differences
   output$two_sample_paired_shapiro_wilk <- renderPrint({
     values <- two_sample_transformed_diffs()
 
@@ -1811,6 +1890,40 @@ server <- function(input, output, session) {
     }
   })
 
+  # F-test to compare variances of two samples
+  output$two_sample_variance_test <- renderPrint({
+    data <- two_sample_transformed_data()
+
+    if (is_empty(data)) {
+      cat(" ")
+    } else {
+      variable1 <- input$two_sample_group1
+      variable2 <- input$two_sample_group2
+
+      values1 <- data %>%
+        filter(group == variable1) %>%
+        filter(is.finite(value)) %>%
+        pull(value)
+
+      values2 <- data %>%
+        filter(group == variable2) %>%
+        filter(is.finite(value)) %>%
+        pull(value)
+
+      if (length(values1) < 3) {
+        if (length(values2) < 3) {
+          cat("Two few values")
+        } else {
+          cat("Two few values in group 1")
+        }
+      } else if (length(values2) < 3) {
+          cat("Two few values in group 2")
+      } else {
+        cat("var.test(group1, group2)\n")
+        var.test(values1, values2)
+      }
+    }
+  })
 }
 
 # shinyApp(ui = ui, server = server)
