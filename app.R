@@ -466,13 +466,13 @@ ui <- fluidPage(
               checkboxInput(
                 "one_sample_show_hypothesized_mean",
                 label = "Show hypothesized mean",
-                value = TRUE
+                value = FALSE
               ),
               h5("Box plot", style = "margin-top: 25px"),
               checkboxInput(
                 "one_sample_show_points",
                 label = "Show points on box plot",
-                value = TRUE
+                value = FALSE
               ),
               helpText(
                 "Outlier points for those observations that are further than",
@@ -973,8 +973,14 @@ server <- function(input, output, session) {
 
     updateCheckboxInput(
       session,
+      "one_sample_show_hypothesized_mean",
+      value = FALSE
+    )
+
+    updateRadioButtons(
+      session,
       "one_sample_test_type",
-      value = "Parametric"
+      selected = "Parametric"
     )
 
     updateRadioButtons(
