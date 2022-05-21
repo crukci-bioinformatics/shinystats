@@ -82,8 +82,6 @@ datasets <- list(
   "Test1" = tibble(
     Before = c(12, 13, 10, 10, 16, 15, 14),
     After = c(10, 12, 8, 9, 15, 12, 13)
-    # Group = c(rep("WT", 25), rep("KO", 25)),
-    # Expression = round(c(rnorm(25, 0.2, 0.01), rnorm(25, 0.21, 0.015)), digits = 3)
   ),
   "Test2" = tibble(
     Group = c(rep("WT", 25), rep("KO", 25)),
@@ -281,6 +279,8 @@ create_histogram <- function(values,
       strip.text = element_text(size = 14),
       axis.title = element_text(size = 14),
       axis.text = element_text(size = 12),
+      axis.ticks.x = element_line(),
+      axis.ticks.length = unit(2, "mm"),
       panel.grid.major.x = element_blank(),
       panel.grid.minor.x = element_blank(),
       legend.position = "none"
@@ -296,7 +296,8 @@ create_t_distribution_plot <- function(t_test_result) {
   df <- t_test_result$parameter["df"]
 
   limit <- max(abs(t), qt(0.975, df)) * 1.25
-  limit <- max(limit, 4)
+  limit <- max(limit, 3)
+  limit <- ceiling(limit)
 
   plot <- ggplot(tibble(t = c(-limit, limit)), aes(t))
 
@@ -404,8 +405,7 @@ ui <- fluidPage(
             selectizeInput(
               "sample_data",
               label = "Sample data sets",
-              choices = names(datasets),
-              selected = "3.1 Biological process duraction"
+              choices = names(datasets)
             )
           )
         )
@@ -433,7 +433,7 @@ ui <- fluidPage(
             )
           ),
           column(
-            width = 4,
+            width = 6,
             radioButtons(
               "one_sample_transformation",
               label = "Transformation",
@@ -535,20 +535,15 @@ ui <- fluidPage(
           br(),
           fluidRow(
             column(
-              width = 6,
+              width = 8,
               helpText(
                 "This tab provides preliminary tests that can help with",
                 "assessing the assumptions of a parametric test, e.g.",
                 "t-test. Preliminary tests of assumptions such as normality",
                 "are controversial and often criticised within the statistics",
                 "community."
-              )
-            )
-          ),
-          h4("Shapiro-Wilk test of normality"),
-          fluidRow(
-            column(
-              width = 6,
+              ),
+              h4("Shapiro-Wilk test of normality"),
               verbatimTextOutput("one_sample_shapiro_wilk_test"),
               helpText(
                 "Null hypothesis: the data come from a normally distributed",
@@ -819,26 +814,31 @@ ui <- fluidPage(
           br(),
           fluidRow(
             column(
-              width = 6,
+              width = 8,
               helpText(
                 "This tab provides preliminary tests that can help with",
                 "assessing the assumptions of a parametric test, e.g.",
                 "t-test. Use of preliminary tests of the assumptions such as",
                 "normality or equal variance between groups are controversial",
                 "and often criticised within the statistics community."
-              )
+              ),
+              h4("Shapiro-Wilk test of normality")
             )
           ),
-          h4("Shapiro-Wilk test of normality"),
           conditionalPanel(
             condition = "input.two_sample_paired",
-            helpText(
-              "The test is run on the differences between pairs of ",
-              "observations."
+            fluidRow(
+              column(
+                width = 8,
+                helpText(
+                  "The test is run on the differences between pairs of",
+                  "observations."
+                )
+              )
             ),
             fluidRow(
               column(
-                width = 6,
+                width = 8,
                 verbatimTextOutput("two_sample_paired_shapiro_wilk")
               )
             )
@@ -859,7 +859,7 @@ ui <- fluidPage(
           ),
           fluidRow(
             column(
-              width = 6,
+              width = 8,
               helpText(
                 "Null hypothesis: the data come from a normally distributed",
                 "population."
@@ -888,17 +888,26 @@ ui <- fluidPage(
           ),
           conditionalPanel(
             condition = "!input.two_sample_paired",
-
-            h4("F test to compare two variances"),
             fluidRow(
               column(
-                width = 6,
+                width = 8,
+                h4("F test to compare two variances"),
                 helpText(
                   "The F-test of equality of variances is a test for the null",
                   "hypothesis that two normal populations have the same",
                   "variance."
                 ),
+                helpText(
+                  "The Welch t-test, an adaptation of Student's t-test, may be",
+                  "more reliable when the samples have unequal variances",
+                  "and/or sample sizes."
+                ),
                 verbatimTextOutput("two_sample_variance_test"),
+                helpText(
+                  "The null hypothesis can be rejected if the p-value is less",
+                  "than 0.05, suggesting that the data come from populations",
+                  "with different variance."
+                ),
                 helpText(
                   "Treat the result of this test with caution; it is often",
                   "better assess differences in variance between the two",
@@ -1364,7 +1373,7 @@ server <- function(input, output, session) {
     } else {
       cat(
         "t.test(values, mu = ", hypothesized_mean,
-        ", alternative = \"", input$one_sample_alternative, "\"')\n",
+        ", alternative = \"", input$one_sample_alternative, "\")\n",
         sep = ""
       )
 
@@ -1402,7 +1411,7 @@ server <- function(input, output, session) {
     } else {
       cat(
         "wilcox.test(values, mu = ", hypothesized_mean,
-        ", alternative = \"", input$one_sample_alternative, "\"')\n",
+        ", alternative = \"", input$one_sample_alternative, "\")\n",
         sep = ""
       )
 
@@ -1926,5 +1935,4 @@ server <- function(input, output, session) {
   })
 }
 
-# shinyApp(ui = ui, server = server)
-runApp(shinyApp(ui = ui, server = server))
+shinyApp(ui = ui, server = server)
