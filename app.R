@@ -751,7 +751,7 @@ ui <- fluidPage(
               checkboxInput(
                 "two_sample_show_points",
                 label = "Show points on box plots",
-                value = TRUE
+                value = FALSE
               ),
               helpText(
                 "Outlier points for those observations that are further than",
