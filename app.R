@@ -193,8 +193,9 @@ create_boxplot <- function(values,
     theme_minimal() +
     theme(
       axis.title.x = element_text(size = 14),
+      axis.text.x = element_text(size = 12),
       axis.title.y = element_blank(),
-      axis.text = element_text(size = 12),
+      axis.text.y = element_text(size = 14),
       axis.ticks.y = element_blank(),
       panel.grid.major.y = element_blank(),
       panel.grid.minor.y = element_blank(),
@@ -215,9 +216,6 @@ create_histogram <- function(values,
   histogram <- tibble(value = values, group = groups) %>%
     ggplot(aes(x = value, fill = group, group = group))
 
-  limits <- range(c(values, xintercept), na.rm = TRUE)
-  breaks <- NULL
-
   if (is.null(number_of_bins)) {
     number_of_bins <- nclass.Sturges(values)
   }
@@ -228,34 +226,24 @@ create_histogram <- function(values,
     min.n = 1
   )
 
+  limits <- range(c(values, breaks, xintercept), na.rm = TRUE)
 
-  limits <- range(c(breaks, limits), na.rm = TRUE)
+  histogram <- histogram +
+    geom_histogram(breaks = breaks, colour = "black")
 
   if (show_normal_distribution) {
+    normal_density <- tibble(
+        group = groups,
+        value = values
+      ) %>%
+      group_by(group) %>%
+      summarize(mean = mean(value), sd = sd(value), n = n()) %>%
+      expand_grid(quantile = seq(limits[1], limits[2], length.out = 101)) %>%
+      mutate(density = dnorm(quantile, mean, sd)) %>%
+      mutate(count = density * n * mean(diff(breaks)))
+
     histogram <- histogram +
-      geom_histogram(
-        aes(y = after_stat(density)),
-        bins = number_of_bins,
-        breaks = breaks,
-        colour = "black"
-      ) +
-      stat_function(
-        fun = dnorm,
-        colour = "grey40",
-        linetype = "solid",
-        size = 0.75,
-        args = list(
-          mean = mean(values),
-          sd = sd(values)
-        )
-      )
-  } else {
-    histogram <- histogram +
-      geom_histogram(
-        bins = number_of_bins,
-        breaks = breaks,
-        colour = "black"
-      )
+      geom_line(data = normal_density, aes(x = quantile, y = count))
   }
 
   if (!is.null(xintercept) && is.finite(xintercept)) {
@@ -272,7 +260,7 @@ create_histogram <- function(values,
     scale_x_continuous(limits = limits) +
     scale_y_continuous(expand = expansion(mult = c(0, 0.05))) +
     scale_fill_manual(values = c("#648FFF", "#DC267F"), drop = FALSE) +
-    labs(x = name) +
+    labs(x = name, y = NULL) +
     facet_wrap(vars(group), drop = FALSE) +
     theme_minimal() +
     theme(
@@ -493,8 +481,7 @@ ui <- fluidPage(
               conditionalPanel(
                 condition = "!input.one_sample_choose_number_of_bins",
                 helpText(
-                  "Chooses an optimal number of bins based on the",
-                  "data if not selected."
+                  "An optimal number of bins is chosen based on the data."
                 )
               ),
               conditionalPanel(
@@ -508,21 +495,13 @@ ui <- fluidPage(
                   ticks = FALSE
                 ),
                 helpText(
-                  "The actual number of bins may differ from the specified",
-                  "number.",
+                  "The actual number of bins may differ for aesthetic reasons.",
                 )
               ),
               checkboxInput(
                 "one_sample_show_normal_distribution",
                 label = "Overlay normal distribution",
                 value = FALSE
-              ),
-              helpText(
-                "Densities instead of counts are displayed if selected."
-              ),
-              helpText(
-                "The normal distribution shown is based on the mean and",
-                "standard deviation of the sample observations."
               )
             ),
             mainPanel(
@@ -664,7 +643,7 @@ ui <- fluidPage(
               )
             ),
             column(
-              width = 4,
+              width = 8,
               radioButtons(
                 "two_sample_paired_transformation",
                 label = "Transformation",
@@ -772,8 +751,7 @@ ui <- fluidPage(
               conditionalPanel(
                 condition = "!input.two_sample_choose_number_of_bins",
                 helpText(
-                  "Chooses an optimal number of bins based on the",
-                  "data if not selected."
+                  "An optimal number of bins is chosen based on the data."
                 )
               ),
               conditionalPanel(
@@ -787,21 +765,13 @@ ui <- fluidPage(
                   ticks = FALSE
                 ),
                 helpText(
-                  "The actual number of bins may differ from the specified",
-                  "number.",
+                  "The actual number of bins may differ for aesthetic reasons.",
                 )
               ),
               checkboxInput(
                 "two_sample_show_normal_distribution",
                 label = "Overlay normal distribution",
                 value = FALSE
-              ),
-              helpText(
-                "Densities instead of counts are displayed if selected."
-              ),
-              helpText(
-                "The normal distribution shown is based on the mean and",
-                "standard deviation of all observations from both groups."
               )
             ),
             mainPanel(
