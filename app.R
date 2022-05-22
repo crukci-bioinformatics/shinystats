@@ -409,15 +409,18 @@ ui <- fluidPage(
             selectInput(
               "one_sample_variable",
               label = "Variable",
-              choices = list()
+              choices = character()
             )
           ),
           column(
             width = 3,
-            numericInput(
+            # would prefer to use a numericInput but the value defaults to zero
+            # rather than NA when updating, e.g. when changing the variable or
+            # dataset
+            textInput(
               "one_sample_hypothesized_mean",
               label = "Hypothesized mean",
-              value = NA
+              value = ""
             )
           ),
           column(
@@ -631,7 +634,7 @@ ui <- fluidPage(
               selectInput(
                 "two_sample_variable1",
                 label = "Variable 1",
-                choices = list()
+                choices = character()
               )
             ),
             column(
@@ -639,7 +642,7 @@ ui <- fluidPage(
               selectInput(
                 "two_sample_variable2",
                 label = "Variable 2",
-                choices = list()
+                choices = character()
               )
             ),
             column(
@@ -667,7 +670,7 @@ ui <- fluidPage(
               selectInput(
                 "two_sample_categorical_variable",
                 label = "Categorical variable",
-                choices = list()
+                choices = character()
               )
             ),
             column(
@@ -675,7 +678,7 @@ ui <- fluidPage(
               selectInput(
                 "two_sample_group1",
                 label = "Group 1",
-                choices = list()
+                choices = character()
               )
             ),
             column(
@@ -683,7 +686,7 @@ ui <- fluidPage(
               selectInput(
                 "two_sample_group2",
                 label = "Group 2",
-                choices = list()
+                choices = character()
               )
             ),
             column(
@@ -691,7 +694,7 @@ ui <- fluidPage(
               selectInput(
                 "two_sample_variable",
                 label = "Variable",
-                choices = list()
+                choices = character()
               )
             ),
             column(
@@ -920,7 +923,7 @@ server <- function(input, output, session) {
     updateSelectInput(
       session,
       "one_sample_variable",
-      choices = list()
+      choices = character()
     )
 
     updateRadioButtons(
@@ -929,22 +932,16 @@ server <- function(input, output, session) {
       selected = "none"
     )
 
-    updateNumericInput(
+    updateTextInput(
       session,
       "one_sample_hypothesized_mean",
-      value = NA
+      value = ""
     )
 
     updateTabsetPanel(
       session,
       "one_sample_tabs",
       selected = "Plots"
-    )
-
-    updateCheckboxInput(
-      session,
-      "one_sample_show_hypothesized_mean",
-      value = FALSE
     )
 
     updateRadioButtons(
@@ -968,25 +965,25 @@ server <- function(input, output, session) {
     updateSelectInput(
       session,
       "two_sample_categorical_variable",
-      choices = list()
+      choices = character()
     )
 
     updateSelectInput(
       session,
       "two_sample_group1",
-      choices = list()
+      choices = character()
     )
 
     updateSelectInput(
       session,
       "two_sample_group2",
-      choices = list()
+      choices = character()
     )
 
     updateSelectInput(
       session,
       "two_sample_variable",
-      choices = list()
+      choices = character()
     )
 
     updateRadioButtons(
@@ -998,13 +995,13 @@ server <- function(input, output, session) {
     updateSelectInput(
       session,
       "two_sample_variable1",
-      choices = list()
+      choices = character()
     )
 
     updateSelectInput(
       session,
       "two_sample_variable2",
-      choices = list()
+      choices = character()
     )
 
     updateRadioButtons(
@@ -1135,11 +1132,10 @@ server <- function(input, output, session) {
   # update hypothesized mean value when a new variable is selected
   observe({
     variable <- input$one_sample_variable
-    updateNumericInput(
+    updateTextInput(
       session,
       "one_sample_hypothesized_mean",
-      label = "Hypothesized mean",
-      value = NA
+      value = ""
     )
   })
 
@@ -1162,7 +1158,7 @@ server <- function(input, output, session) {
   # hypothesized mean, log transformed if required
   one_sample_hypothesized_mean <- reactive({
     transform(
-      input$one_sample_hypothesized_mean,
+      as.numeric(input$one_sample_hypothesized_mean),
       input$one_sample_transformation
     )
   })
@@ -1179,6 +1175,13 @@ server <- function(input, output, session) {
     numerical_variables <- numerical_variables()
     if (is_empty(numerical_variables)) {
       return("No numerical variables in current data set")
+    }
+
+    hypothesized_mean <- input$one_sample_hypothesized_mean
+    if (str_length(hypothesized_mean) == 0) {
+      return("Hypothesized mean is not set")
+    } else if (is.na(as.numeric(hypothesized_mean))) {
+      return("Non-numeric value specified for hypothesized mean")
     }
 
     values <- one_sample_data()
@@ -1911,4 +1914,4 @@ server <- function(input, output, session) {
   })
 }
 
-shinyApp(ui = ui, server = server)
+shinyApp(ui, server)
