@@ -413,7 +413,7 @@ ui <- fluidPage(
             )
           ),
           column(
-            width = 2,
+            width = 3,
             numericInput(
               "one_sample_hypothesized_mean",
               label = "Hypothesized mean",
@@ -1763,7 +1763,7 @@ server <- function(input, output, session) {
       if (!is_empty(differences)) {
         difference_boxplot <- create_boxplot(
           differences,
-          name = "differences",
+          name = "difference",
           show_points = input$two_sample_show_points,
           show_density = input$two_sample_violin
         )
@@ -1778,7 +1778,7 @@ server <- function(input, output, session) {
 
         difference_histogram <- create_histogram(
           differences,
-          name = "differences",
+          name = "difference",
           number_of_bins = number_of_bins,
           show_normal_distribution = input$two_sample_show_normal_distribution
         )
