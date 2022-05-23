@@ -522,17 +522,19 @@ The actual number of bins may differ for aesthetic reasons.
             column(
               width = 8,
               wellPanel(
-                "The assumptions of the parametric, one-sample t-test are that",
-                "the data values are:",
+                "The following assumptions need to hold for a parametric,",
+                "one sample t-test:",
                 p(),
                 tags$ul(
                   tags$li(
-                    "independent (values are not related to one another)"
+                    "independent - values are not related to one another"
                   ),
-                  tags$li("continuous (not discrete)"),
                   tags$li(
-                    "a random sample from a population that is normally",
-                    "distributed"
+                    "the data are on a continuous scale"
+                  ),
+                  tags$li(
+                    "the data are a random sample from a population that is",
+                    "normally distributed"
                   )
                 )
               ),
@@ -591,7 +593,7 @@ looking at box plots, density plots and histograms.
                 choices = c("Parametric", "Non-parametric")
               ),
               helpText("
-A parametric, one-sample t-test assumes that the data values are independent,
+A parametric, one sample t-test assumes that the data values are independent,
 continuous and a random sample from a population that is normally distributed.
               "),
               br(),
@@ -813,25 +815,27 @@ The actual number of bins may differ for aesthetic reasons.
               wellPanel(
                 conditionalPanel(
                   condition = "!input.two_sample_paired",
-                  "The assumptions of the parametric, two-sample t-test are",
-                  "that the data values are:",
+                  "The following assumptions need to hold for a parametric,",
+                  "two sample t-test:",
                   p(),
                   tags$ul(
                     tags$li(
-                      "independent - measurements for one observation do not",
-                      "affect measurements for any other observation"
+                      "independent - observations in one sample (or group) are",
+                      "independent of observations in the other sample"
                     ),
-                    tags$li("continuous (not discrete)"),
                     tags$li(
-                      "a random sample from a population for each group that",
-                      "is normally distributed"
+                      "the data are on a continuous scale"
+                    ),
+                    tags$li(
+                      "the data are a random sample from a population for each",
+                      "group that is normally distributed"
                     )
                   )
                 ),
                 conditionalPanel(
                   condition = "input.two_sample_paired",
                   "The following assumptions need to hold for a paired t-test",
-                  "for the differences between paired measurements:",
+                  "of the differences between paired measurements:",
                   p(),
                   tags$ul(
                     tags$li(
@@ -950,7 +954,7 @@ plots.
                     h4("Shapiro-Wilk test of normality"),
                     helpText("
 The Shapiro-Wilk test of normality is a test for the null hypothesis that the
-data come from a normally distributed population. In the paired two-sample case,
+data come from a normally distributed population. In the paired two sample case,
 the test is run on the differences between pairs of measurements.
                     "),
                     verbatimTextOutput("two_sample_paired_shapiro_wilk"),
@@ -977,7 +981,83 @@ looking at box plots, density plots and histograms.
           )
         ),
         tabPanel(
-          "Statistical tests"
+          "Statistical tests",
+          br(),
+          sidebarLayout(
+            sidebarPanel(
+              radioButtons(
+                "two_sample_test_type",
+                label = "Test",
+                choices = c("Parametric", "Non-parametric")
+              ),
+              conditionalPanel(
+                condition = "!input.two_sample_paired",
+                helpText("
+A parametric, two sample t-test assumes that the observations of one sample are
+independent of the observations of the other sample and that the observations
+are random samples from a normally-distributed population for each group.
+                ")
+              ),
+              conditionalPanel(
+                condition = "input.two_sample_paired",
+                helpText("
+A parametric, paired t-test assumes that there are paired measurements for each
+subject, that these observations are independent of one another, and that the
+measured differences are normally distributed.
+                ")
+              ),
+              conditionalPanel(
+                condition = "input.two_sample_test_type == 'Parametric' && !input.two_sample_paired",
+                checkboxInput(
+                  "two_sample_equal_variance",
+                  "Equal variance in each sample"
+                ),
+                helpText("
+The Welch t-test, an adaptation of Student's t-test, may be more reliable when
+the samples have unequal variances and/or sample sizes.
+                ")
+              ),
+              br(),
+              radioButtons(
+                "two_sample_alternative",
+                "Alternative hypothesis",
+                choices = c(
+                  "Two-sided" = "two.sided",
+                  "Greater" = "greater",
+                  "Less" = "less"
+                )
+              )
+            ),
+            mainPanel(
+              conditionalPanel(
+                condition = "input.two_sample_test_type == 'Parametric'",
+                h4("Two sample t-test"),
+                fluidRow(
+                  column(
+                    width = 11,
+                    verbatimTextOutput("two_sample_t_test")
+                  )
+                ),
+                fluidRow(
+                  column(
+                    width = 9,
+                    offset = 1,
+                    plotOutput("two_sample_t_plot", height = "300px")
+                  )
+                )
+              ),
+              conditionalPanel(
+                condition = "input.two_sample_test_type == 'Non-parametric'",
+                h4("Wilcoxon rank sum test"),
+                fluidRow(
+                  column(
+                    width = 10,
+                    verbatimTextOutput("two_sample_wilcoxon_test")
+                  )
+                )
+              )
+            )
+          )
         )
       )
     )
@@ -1205,7 +1285,7 @@ server <- function(input, output, session) {
   # one sample test
   # ---------------
 
-  # update variable selection list for one-sample test
+  # update variable selection list for one sample test
   observe({
     updateSelectInput(
       session,
@@ -1496,7 +1576,7 @@ server <- function(input, output, session) {
   # two sample test
   # ---------------
 
-  # update categorical variable selection list for two-sample test
+  # update categorical variable selection list for two sample test
   observe({
     updateSelectInput(
       session,
@@ -1522,7 +1602,7 @@ server <- function(input, output, session) {
     }
   })
 
-  # update group lists for two-sample test
+  # update group lists for two sample test
   observe({
     groups <- two_sample_groups()
     updateSelectInput(
@@ -1541,7 +1621,7 @@ server <- function(input, output, session) {
     )
   })
 
-  # update numerical variable selection lists for two-sample test
+  # update numerical variable selection lists for two sample test
   observe({
     numerical_variables <- numerical_variables()
     updateSelectInput(
@@ -2002,4 +2082,4 @@ server <- function(input, output, session) {
   })
 }
 
-shinyApp(ui, server)
+runApp(shinyApp(ui, server))
