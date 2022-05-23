@@ -476,6 +476,15 @@ edges of the box, i.e. the first and third quantiles, are always displayed.
               ),
               h5("Histogram", style = "margin-top: 25px"),
               checkboxInput(
+                "one_sample_show_normal_distribution",
+                label = "Overlay normal distribution",
+                value = FALSE
+              ),
+              helpText("
+The normal distribution shown is based on the computed mean and standard
+deviation of the data.
+              "),
+              checkboxInput(
                 "one_sample_choose_number_of_bins",
                 label = "Choose number of bins",
                 value = FALSE
@@ -499,15 +508,10 @@ An optimal number of bins is chosen based on the data.
                 helpText("
 The actual number of bins may differ for aesthetic reasons.
                 ")
-              ),
-              checkboxInput(
-                "one_sample_show_normal_distribution",
-                label = "Overlay normal distribution",
-                value = FALSE
               )
             ),
             mainPanel(
-              plotOutput("one_sample_plots", width = "95%", height = "500px"),
+              plotOutput("one_sample_plots", width = "80%", height = "500px"),
             )
           )
         ),
@@ -761,6 +765,15 @@ edges of the box, i.e. the first and third quantiles, are always displayed.
               ),
               h5("Histogram"),
               checkboxInput(
+                "two_sample_show_normal_distribution",
+                label = "Overlay normal distribution",
+                value = FALSE
+              ),
+              helpText("
+The normal distribution shown is based on the computed mean and standard
+deviation of each group.
+              "),
+              checkboxInput(
                 "two_sample_choose_number_of_bins",
                 label = "Choose number of bins",
                 value = FALSE
@@ -784,11 +797,6 @@ An optimal number of bins is chosen based on the data.
                 helpText("
 The actual number of bins may differ for aesthetic reasons.
                 ")
-              ),
-              checkboxInput(
-                "two_sample_show_normal_distribution",
-                label = "Overlay normal distribution",
-                value = FALSE
               )
             ),
             mainPanel(
@@ -1892,6 +1900,7 @@ server <- function(input, output, session) {
       if (length(values) < 3) {
         cat("Too few values")
       } else {
+        cat("# Group 1: ", variable, "\n", sep = "")
         cat("shapiro.test(group1)\n")
 
         result <- shapiro.test(values)
@@ -1921,6 +1930,7 @@ server <- function(input, output, session) {
       if (length(values) < 3) {
         cat("Too few values")
       } else {
+        cat("# Group 2: ", variable, "\n", sep = "")
         cat("shapiro.test(group2)\n")
 
         result <- shapiro.test(values)
