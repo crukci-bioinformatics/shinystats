@@ -362,7 +362,7 @@ ui <- fluidPage(
   div(style = "margin-top: 65px;"),
   navbarPage(
     title = div(
-      style = "color: #231F7F; font-size: 90%;",
+      style = "color: #231F7F",
       a(
         href = "https://www.cruk.cam.ac.uk",
         target = "_blank",
@@ -465,11 +465,10 @@ ui <- fluidPage(
                 label = "Show points on box plot",
                 value = FALSE
               ),
-              helpText(
-                "Outlier points for those observations that are further than",
-                "1.5 IQR from the edges of the box, i.e. the first and third",
-                "quantiles, are always displayed."
-              ),
+              helpText("
+Outlier points for those observations that are further than 1.5 IQR from the
+edges of the box, i.e. the first and third quantiles, are always displayed.
+              "),
               checkboxInput(
                 "one_sample_violin",
                 label = "Overlay density on box plot",
@@ -483,9 +482,9 @@ ui <- fluidPage(
               ),
               conditionalPanel(
                 condition = "!input.one_sample_choose_number_of_bins",
-                helpText(
-                  "An optimal number of bins is chosen based on the data."
-                )
+                helpText("
+An optimal number of bins is chosen based on the data.
+                ")
               ),
               conditionalPanel(
                 condition = "input.one_sample_choose_number_of_bins",
@@ -497,9 +496,9 @@ ui <- fluidPage(
                   value = 20,
                   ticks = FALSE
                 ),
-                helpText(
-                  "The actual number of bins may differ for aesthetic reasons.",
-                )
+                helpText("
+The actual number of bins may differ for aesthetic reasons.
+                ")
               ),
               checkboxInput(
                 "one_sample_show_normal_distribution",
@@ -513,43 +512,66 @@ ui <- fluidPage(
           )
         ),
         tabPanel(
-          "Assumption tests",
+          "Assumptions",
           br(),
           fluidRow(
             column(
               width = 8,
-              helpText(
-                "This tab provides preliminary tests that can help with",
-                "assessing the assumptions of a parametric test, e.g.",
-                "t-test. Preliminary tests of assumptions such as normality",
-                "are controversial and often criticised within the statistics",
-                "community."
+              wellPanel(
+                "The assumptions of the parametric, one-sample t-test are that",
+                "the data values are:",
+                p(),
+                tags$ul(
+                  tags$li(
+                    "independent (values are not related to one another)"
+                  ),
+                  tags$li("continuous (not discrete)"),
+                  tags$li(
+                    "a random sample from a population that is normally",
+                    "distributed"
+                  )
+                )
               ),
-              h4("Shapiro-Wilk test of normality"),
-              verbatimTextOutput("one_sample_shapiro_wilk_test"),
-              helpText(
-                "Null hypothesis: the data come from a normally distributed",
-                "population."
-              ),
-              helpText(
-                "The null hypothesis can be rejected if the p-value is less",
-                "than 0.05, suggesting that the data come from a population",
-                "that does not follow a normal distribution."
-              ),
-              helpText(
-                "If the null hypothesis can't be rejected, this means there is",
-                "insufficient evidence that the data are not normal. This is",
-                "not the same as accepting that the data come from a normal",
-                "distribution, i.e. it does not prove that the null hypothesis",
-                "is true."
-              ),
-              helpText(
-                "Caution is advised when using a preliminary test for",
-                "normality to decide whether a parametric or non-parametric",
-                "test should subsequently be used, particularly when the",
-                "sample size is small. It is often better to make your own",
-                "assessment by looking at box plots, density plots and",
-                "histograms."
+              helpText("
+This page provides graphical and statistical tools that can help with assessing
+the assumptions of a parametric test, e.g. t-test. Use of preliminary tests of
+the assumptions such as normality or equal variance between groups are
+controversial and often criticised within the statistics community.
+              ")
+            )
+          ),
+          tabsetPanel(
+            tabPanel(
+              "Q-Q plot"
+            ),
+            tabPanel(
+              "Shapiro-Wilk test",
+              fluidRow(
+                column(
+                  width = 8,
+                  h4("Shapiro-Wilk test of normality"),
+                  helpText("
+The Shapiro-Wilk test of normality is a test for the null hypothesis that the
+data come from a normally distributed population.
+                  "),
+                  verbatimTextOutput("one_sample_shapiro_wilk_test"),
+                  helpText("
+The null hypothesis can be rejected if the p-value is less than 0.05, suggesting
+that the data come from a population that does not follow a normal distribution.
+                  "),
+                  helpText("
+If the null hypothesis can't be rejected, this means there is insufficient
+evidence that the data are not normal. This is not the same as accepting tha
+the data come from a normal distribution, i.e. it does not prove that the null
+hypothesis is true.
+                  "),
+                  helpText("
+Caution is advised when using a preliminary test for normality to decide whether
+a parametric or non-parametric test should subsequently be used, particularly
+when the sample size is small. It is often better to make your own assessment by
+looking at box plots, density plots and histograms.
+                  ")
+                )
               )
             )
           )
@@ -564,16 +586,10 @@ ui <- fluidPage(
                 label = "Test",
                 choices = c("Parametric", "Non-parametric")
               ),
-              "The assumptions of the parametric one-sample t-test are that",
-              "the data values are:",
-              tags$ul(
-                tags$li("independent (values are not related to one another)"),
-                tags$li("continuous (not discrete)"),
-                tags$li(
-                  "a random sample from a population that is normally",
-                  "distributed"
-                )
-              ),
+              helpText("
+A parametric, one-sample t-test assumes that the data values are independent,
+continuous and a random sample from a population that is normally distributed.
+              "),
               br(),
               radioButtons(
                 "one_sample_alternative",
@@ -591,14 +607,13 @@ ui <- fluidPage(
                 h4("One sample t-test"),
                 fluidRow(
                   column(
-                    width = 10,
+                    width = 11,
                     verbatimTextOutput("one_sample_t_test")
                   )
                 ),
-                br(),
                 fluidRow(
                   column(
-                    width = 8,
+                    width = 9,
                     offset = 1,
                     plotOutput("one_sample_t_plot", height = "300px")
                   )
@@ -735,11 +750,10 @@ ui <- fluidPage(
                 label = "Show points on box plots",
                 value = FALSE
               ),
-              helpText(
-                "Outlier points for those observations that are further than",
-                "1.5 IQR from the edges of the box, i.e. the first and third",
-                "quantiles, are always displayed."
-              ),
+              helpText("
+Outlier points for those observations that are further than 1.5 IQR from the
+edges of the box, i.e. the first and third quantiles, are always displayed.
+              "),
               checkboxInput(
                 "two_sample_violin",
                 label = "Overlay density on box plots",
@@ -753,9 +767,9 @@ ui <- fluidPage(
               ),
               conditionalPanel(
                 condition = "!input.two_sample_choose_number_of_bins",
-                helpText(
-                  "An optimal number of bins is chosen based on the data."
-                )
+                helpText("
+An optimal number of bins is chosen based on the data.
+                ")
               ),
               conditionalPanel(
                 condition = "input.two_sample_choose_number_of_bins",
@@ -767,9 +781,9 @@ ui <- fluidPage(
                   value = 20,
                   ticks = FALSE
                 ),
-                helpText(
-                  "The actual number of bins may differ for aesthetic reasons.",
-                )
+                helpText("
+The actual number of bins may differ for aesthetic reasons.
+                ")
               ),
               checkboxInput(
                 "two_sample_show_normal_distribution",
@@ -783,108 +797,172 @@ ui <- fluidPage(
           )
         ),
         tabPanel(
-          "Assumption tests",
+          "Assumptions",
           br(),
           fluidRow(
             column(
               width = 8,
-              helpText(
-                "This tab provides preliminary tests that can help with",
-                "assessing the assumptions of a parametric test, e.g.",
-                "t-test. Use of preliminary tests of the assumptions such as",
-                "normality or equal variance between groups are controversial",
-                "and often criticised within the statistics community."
+              wellPanel(
+                conditionalPanel(
+                  condition = "!input.two_sample_paired",
+                  "The assumptions of the parametric, two-sample t-test are",
+                  "that the data values are:",
+                  p(),
+                  tags$ul(
+                    tags$li(
+                      "independent - measurements for one observation do not",
+                      "affect measurements for any other observation"
+                    ),
+                    tags$li("continuous (not discrete)"),
+                    tags$li(
+                      "a random sample from a population for each group that",
+                      "is normally distributed"
+                    )
+                  )
+                ),
+                conditionalPanel(
+                  condition = "input.two_sample_paired",
+                  "The following assumptions need to hold for a paired t-test",
+                  "for the differences between paired measurements:",
+                  p(),
+                  tags$ul(
+                    tags$li(
+                      "independent - measurements for one observation do not",
+                      "affect measurements for any other subject"
+                    ),
+                    tags$li(
+                      "each of the paired measurements must be obtained from",
+                      "same subject"
+                    ),
+                    tags$li(
+                      "the measured differences are normally distributed"
+                    )
+                  )
+                )
               ),
-              h4("Shapiro-Wilk test of normality")
+              helpText("
+This page provides graphical and statistical tools that can help with assessing
+the assumptions of a parametric test, e.g. t-test. Use of preliminary tests of
+the assumptions such as normality or equal variance between groups are
+controversial and often criticised within the statistics community.
+              ")
+            )
+          ),
+          conditionalPanel(
+            condition = "!input.two_sample_paired",
+            tabsetPanel(
+              tabPanel(
+                "Q-Q plot"
+              ),
+              tabPanel(
+                "Shapiro-Wilk test",
+                fluidRow(
+                  column(
+                    width = 8,
+                    h4("Shapiro-Wilk test of normality"),
+                    helpText("
+The Shapiro-Wilk test of normality is a test for the null hypothesis that the
+data come from a normally distributed population. The test is run for each of
+the two groups separately.
+                    ")
+                  )
+                ),
+                fluidRow(
+                  column(
+                    width = 5,
+                    verbatimTextOutput("two_sample_shapiro_wilk_test1")
+                  ),
+                  column(
+                    width = 5,
+                    verbatimTextOutput("two_sample_shapiro_wilk_test2")
+                  )
+                ),
+                fluidRow(
+                  column(
+                    width = 8,
+                    helpText("
+The null hypothesis can be rejected if the p-value is less than 0.05, suggesting
+that the data come from a population that does not follow a normal distribution.
+                    "),
+                    helpText("
+If the null hypothesis can't be rejected, this means there is insufficient
+evidence that the data are not normal. This is not the same as accepting tha
+the data come from a normal distribution, i.e. it does not prove that the null
+hypothesis is true.
+                    "),
+                    helpText("
+Caution is advised when using a preliminary test for normality to decide whether
+a parametric or non-parametric test should subsequently be used, particularly
+when the sample size is small. It is often better to make your own assessment by
+looking at box plots, density plots and histograms.
+                    ")
+                  )
+                )
+              ),
+              tabPanel(
+                "F-test",
+                fluidRow(
+                  column(
+                    width = 8,
+                    h4("F test to compare two variances"),
+                    helpText("
+The F-test of equality of variances is a test for the null hypothesis that two
+normal populations have the same variance.
+                    "),
+                    helpText("
+The Welch t-test, an adaptation of Student's t-test, may be more reliable when
+the samples have unequal variances and/or sample sizes.
+                    "),
+                    verbatimTextOutput("two_sample_variance_test"),
+                    helpText("
+The null hypothesis can be rejected if the p-value is less than 0.05, suggesting
+that the data come from populations with different variance.
+                    "),
+                    helpText("
+Treat the result of this test with caution; it is often better assess
+differences in variance between the two groups by inspecting the box and density
+plots.
+                    ")
+                  )
+                ),
+              )
             )
           ),
           conditionalPanel(
             condition = "input.two_sample_paired",
-            fluidRow(
-              column(
-                width = 8,
-                helpText(
-                  "The test is run on the differences between pairs of",
-                  "observations."
-                )
-              )
-            ),
-            fluidRow(
-              column(
-                width = 8,
-                verbatimTextOutput("two_sample_paired_shapiro_wilk")
-              )
-            )
-          ),
-          conditionalPanel(
-            condition = "!input.two_sample_paired",
-            helpText("Tests are run for each of the two groups."),
-            fluidRow(
-              column(
-                width = 5,
-                verbatimTextOutput("two_sample_shapiro_wilk_test1")
+            tabsetPanel(
+              tabPanel(
+                "Q-Q plot"
               ),
-              column(
-                width = 5,
-                verbatimTextOutput("two_sample_shapiro_wilk_test2")
-              )
-            )
-          ),
-          fluidRow(
-            column(
-              width = 8,
-              helpText(
-                "Null hypothesis: the data come from a normally distributed",
-                "population."
-              ),
-              helpText(
-                "The null hypothesis can be rejected if the p-value is less",
-                "than 0.05, suggesting that the data come from a population",
-                "that does not follow a normal distribution."
-              ),
-              helpText(
-                "If the null hypothesis can't be rejected, this means there is",
-                "insufficient evidence that the data are not normal. This is",
-                "not the same as accepting that the data come from a normal",
-                "distribution, i.e. it does not prove that the null hypothesis",
-                "is true."
-              ),
-              helpText(
-                "Caution is advised when using a preliminary test for",
-                "normality to decide whether a parametric or non-parametric",
-                "test should subsequently be used, particularly when the",
-                "sample size is small. It is often better to make your own",
-                "assessment by looking at box plots, density plots and",
-                "histograms."
-              )
-            )
-          ),
-          conditionalPanel(
-            condition = "!input.two_sample_paired",
-            fluidRow(
-              column(
-                width = 8,
-                h4("F test to compare two variances"),
-                helpText(
-                  "The F-test of equality of variances is a test for the null",
-                  "hypothesis that two normal populations have the same",
-                  "variance."
-                ),
-                helpText(
-                  "The Welch t-test, an adaptation of Student's t-test, may be",
-                  "more reliable when the samples have unequal variances",
-                  "and/or sample sizes."
-                ),
-                verbatimTextOutput("two_sample_variance_test"),
-                helpText(
-                  "The null hypothesis can be rejected if the p-value is less",
-                  "than 0.05, suggesting that the data come from populations",
-                  "with different variance."
-                ),
-                helpText(
-                  "Treat the result of this test with caution; it is often",
-                  "better assess differences in variance between the two",
-                  "groups by inspecting the box and density plots."
+              tabPanel(
+                "Shapiro-Wilk test",
+                fluidRow(
+                  column(
+                    width = 8,
+                    h4("Shapiro-Wilk test of normality"),
+                    helpText("
+The Shapiro-Wilk test of normality is a test for the null hypothesis that the
+data come from a normally distributed population. In the paired two-sample case,
+the test is run on the differences between pairs of measurements.
+                    "),
+                    verbatimTextOutput("two_sample_paired_shapiro_wilk"),
+                    helpText("
+The null hypothesis can be rejected if the p-value is less than 0.05, suggesting
+that the data come from a population that does not follow a normal distribution.
+                    "),
+                    helpText("
+If the null hypothesis can't be rejected, this means there is insufficient
+evidence that the data are not normal. This is not the same as accepting tha
+the data come from a normal distribution, i.e. it does not prove that the null
+hypothesis is true.
+                    "),
+                    helpText("
+Caution is advised when using a preliminary test for normality to decide whether
+a parametric or non-parametric test should subsequently be used, particularly
+when the sample size is small. It is often better to make your own assessment by
+looking at box plots, density plots and histograms.
+                    ")
+                  )
                 )
               )
             )
