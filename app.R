@@ -339,7 +339,7 @@ create_t_distribution_plot <- function(t_test_result) {
     scale_y_continuous(expand = expansion(mult = c(0, 0.05))) +
     theme_minimal() +
     theme(
-      title = element_text(size = 12),
+      title = element_text(size = 11),
       axis.title.x = element_text(size = 16, face = "italic"),
       axis.text.x = element_text(size = 12),
       axis.line.x = element_line(),
@@ -457,7 +457,7 @@ ui <- fluidPage(
               checkboxInput(
                 "one_sample_show_hypothesized_mean",
                 label = "Show hypothesized mean",
-                value = FALSE
+                value = TRUE
               ),
               h5("Box plot", style = "margin-top: 25px"),
               checkboxInput(
@@ -541,8 +541,8 @@ The actual number of bins may differ for aesthetic reasons.
               helpText("
 This page provides graphical and statistical tools that can help with assessing
 the assumptions of a parametric test, e.g. t-test. Use of preliminary tests of
-the assumptions such as normality or equal variance between groups are
-controversial and often criticised within the statistics community.
+assumptions such as normality or equal variance between groups are controversial
+and often criticised within the statistics community.
               ")
             )
           ),
@@ -611,19 +611,8 @@ continuous and a random sample from a population that is normally distributed.
               conditionalPanel(
                 condition = "input.one_sample_test_type == 'Parametric'",
                 h4("One sample t-test"),
-                fluidRow(
-                  column(
-                    width = 11,
-                    verbatimTextOutput("one_sample_t_test")
-                  )
-                ),
-                fluidRow(
-                  column(
-                    width = 9,
-                    offset = 1,
-                    plotOutput("one_sample_t_plot", height = "300px")
-                  )
-                )
+                verbatimTextOutput("one_sample_t_test"),
+                plotOutput("one_sample_t_plot", height = "300px", width = "80%")
               ),
               conditionalPanel(
                 condition = "input.one_sample_test_type == 'Non-parametric'",
@@ -855,8 +844,8 @@ The actual number of bins may differ for aesthetic reasons.
               helpText("
 This page provides graphical and statistical tools that can help with assessing
 the assumptions of a parametric test, e.g. t-test. Use of preliminary tests of
-the assumptions such as normality or equal variance between groups are
-controversial and often criticised within the statistics community.
+assumptions such as normality or equal variance between groups are controversial
+and often criticised within the statistics community.
               ")
             )
           ),
@@ -1781,6 +1770,20 @@ server <- function(input, output, session) {
       }
     }
 
+    if (paired) {
+      variable1 <- input$two_sample_variable1
+      variable2 <- input$two_sample_variable2
+      if (variable1 == variable2 && variable1 != "") {
+        return("Select different variables for the paired observations")
+      }
+    } else {
+      group1 <- input$two_sample_group1
+      group2 <- input$two_sample_group2
+      if (group1 == group2 && group1 != "") {
+        return("Select different categories for the two sample groups")
+      }
+    }
+
     data <- two_sample_data()
 
     if (!is_empty(data)) {
@@ -1930,13 +1933,6 @@ server <- function(input, output, session) {
       difference_histogram <- plot_spacer()
 
       if (!is_empty(differences)) {
-        difference_boxplot <- create_boxplot(
-          differences,
-          name = "difference",
-          show_points = input$two_sample_show_points,
-          show_density = input$two_sample_violin
-        )
-
         number_of_bins <- NULL
         if (input$two_sample_choose_number_of_bins) {
           number_of_bins <- input$two_sample_number_of_bins
@@ -1950,6 +1946,16 @@ server <- function(input, output, session) {
           name = "difference",
           number_of_bins = number_of_bins,
           show_normal_distribution = input$two_sample_show_normal_distribution
+        )
+
+        limits <- layer_scales(difference_histogram)$x$limits
+
+        difference_boxplot <- create_boxplot(
+          differences,
+          name = "difference",
+          limits = limits,
+          show_points = input$two_sample_show_points,
+          show_density = input$two_sample_violin
         )
       }
 
@@ -2082,4 +2088,4 @@ server <- function(input, output, session) {
   })
 }
 
-runApp(shinyApp(ui, server))
+shinyApp(ui, server)
