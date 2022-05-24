@@ -153,8 +153,18 @@ create_boxplot <- function(values,
                            limits = NULL,
                            show_points = TRUE,
                            show_density = FALSE) {
-  boxplot <- tibble(value = values, group = groups) %>%
-    ggplot(aes(x = value, y = group, fill = group))
+  if (is.null(values)) {
+    return(ggplot() + theme_minimal())
+  }
+
+  data <- tibble(value = values, group = groups) %>%
+    filter(if_all(everything(), is.finite))
+
+  if (nrow(data) == 0) {
+    return(ggplot() + theme_minimal())
+  }
+
+  boxplot <- ggplot(data, aes(x = value, y = group, fill = group))
 
   outlier_shape <- NULL
   if (show_points) {
@@ -182,6 +192,8 @@ create_boxplot <- function(values,
       )
   }
 
+  limits <- range(c(data$value))
+
   if (!is.null(xintercept) && is.finite(xintercept)) {
     boxplot <- boxplot +
       geom_vline(
@@ -190,10 +202,7 @@ create_boxplot <- function(values,
         size = 1.25,
         linetype = "solid"
       )
-  }
-
-  if (is.null(limits)) {
-    limits <- range(c(values, xintercept), na.rm = TRUE)
+    limits <- range(c(limits, xintercept))
   }
 
   boxplot <- boxplot +
@@ -223,30 +232,36 @@ create_histogram <- function(values,
                              xintercept = NULL,
                              number_of_bins = NULL,
                              show_normal_distribution = FALSE) {
+  if (is.null(values)) {
+    return(ggplot() + theme_minimal())
+  }
 
-  histogram <- tibble(value = values, group = groups) %>%
-    ggplot(aes(x = value, fill = group, group = group))
+  data <- tibble(value = values, group = groups) %>%
+    filter(if_all(everything(), is.finite))
+
+  if (nrow(data) == 0) {
+    return(ggplot() + theme_minimal())
+  }
+
+  histogram <- ggplot(data, aes(x = value, fill = group, group = group))
 
   if (is.null(number_of_bins)) {
-    number_of_bins <- nclass.Sturges(values)
+    number_of_bins <- nclass.Sturges(data$value)
   }
 
   breaks <- pretty(
-    range(values, na.rm = TRUE),
+    range(data$value, na.rm = TRUE),
     number_of_bins,
     min.n = 1
   )
 
-  limits <- range(c(values, breaks, xintercept), na.rm = TRUE)
+  limits <- range(c(data$value, breaks))
 
   histogram <- histogram +
     geom_histogram(breaks = breaks, colour = "black")
 
   if (show_normal_distribution) {
-    normal_density <- tibble(
-        group = groups,
-        value = values
-      ) %>%
+    normal_density <- data %>%
       group_by(group) %>%
       summarize(mean = mean(value), sd = sd(value), n = n()) %>%
       expand_grid(quantile = seq(limits[1], limits[2], length.out = 101)) %>%
@@ -290,8 +305,18 @@ create_histogram <- function(values,
 
 # Q-Q plot
 create_qq_plot <- function(values, groups = "") {
-  tibble(value = values, group = groups) %>%
-    ggplot(aes(sample = value, colour = group)) +
+  if (is.null(values)) {
+    return(ggplot() + theme_minimal())
+  }
+
+  data <- tibble(value = values, group = groups) %>%
+    filter(if_all(everything(), is.finite))
+
+  if (nrow(data) == 0) {
+    return(ggplot() + theme_minimal())
+  }
+
+  ggplot(data, aes(sample = value, colour = group)) +
     stat_qq() +
     stat_qq_line() +
     labs(x = "theoretical quantiles", y = "sample quantiles") +
