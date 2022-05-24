@@ -95,6 +95,16 @@ datasets <- list(
     Group = c(rep("WT", 25), rep("KO", 25)),
     Expression = round(c(rnorm(25, 0.1, 0.01), rnorm(25, -0.1, 0.015)), digits = 3)
   ),
+  "Test5" = tibble(
+    Group = c(rep("WT", 5), rep("KO", 5)),
+    Value = c(-1, -1.5, 0.6, 1.7, -0.25, 0.9, 0.1, 1.2, 1.5, 0.5)
+  ),
+  "Test6" = tibble(
+    A = c(5, 8, 7, 9, 8),
+    B = c(6, 7, 7, 8, 10)
+  ),
+  "Negative values" = tibble(negative = rnorm(30, -50, 5)) %>%
+    filter(negative < 0),
   "Categories" = tibble(Group = c("WT", "WT", "WT", "KO", "KO", "KO")),
   "Letters" = tibble(letter = letters),
   "Empty" = tibble()
@@ -104,22 +114,23 @@ datasets <- list(
 # ================
 
 # summary statistics
-summary_statistics <- function(x) {
+summary_statistics <- function(values) {
   as_tibble(list(
-    `Number of observations` = length(x),
-    `Missing values` = sum(is.na(x)),
-    Mean = mean(x, na.rm = TRUE),
-    `Standard deviation` = sd(x, na.rm = TRUE),
+    `Number of observations` = length(values),
+    `Missing values` = sum(is.na(values)),
+    `Finite values` = sum(is.finite(values)),
+    Mean = mean(values, na.rm = TRUE),
+    `Standard deviation` = sd(values, na.rm = TRUE),
     `Confidence interval (C.I.) lower` =
-      mean(x, na.rm = TRUE) - 1.96 * sd(x, na.rm = TRUE) / sqrt(length(x)),
+      mean(values, na.rm = TRUE) - 1.96 * sd(values, na.rm = TRUE) / sqrt(length(values)),
     `Confidence interval (C.I.) upper` =
-      mean(x, na.rm = TRUE) + 1.96 * sd(x, na.rm = TRUE) / sqrt(length(x)),
-    Minimum = min(x, na.rm = TRUE),
-    `25th percentile (1st quartile)` = quantile(x, 0.25, na.rm = TRUE),
-    Median = median(x, na.rm = TRUE),
-    `75th percentile (3rd quartile)` = quantile(x, 0.75, na.rm = TRUE),
-    Maximum = max(x, na.rm = TRUE),
-    `Interquartile range (IQR)` = IQR(x, na.rm = TRUE)
+      mean(values, na.rm = TRUE) + 1.96 * sd(values, na.rm = TRUE) / sqrt(length(values)),
+    Minimum = min(values, na.rm = TRUE),
+    `25th percentile (1st quartile)` = quantile(values, 0.25, na.rm = TRUE),
+    Median = median(values, na.rm = TRUE),
+    `75th percentile (3rd quartile)` = quantile(values, 0.75, na.rm = TRUE),
+    Maximum = max(values, na.rm = TRUE),
+    `Interquartile range (IQR)` = IQR(values, na.rm = TRUE)
   ))
 }
 
@@ -275,6 +286,24 @@ create_histogram <- function(values,
     )
 
   histogram
+}
+
+# Q-Q plot
+create_qq_plot <- function(values, groups = "") {
+  tibble(value = values, group = groups) %>%
+    ggplot(aes(sample = value, colour = group)) +
+    stat_qq() +
+    stat_qq_line() +
+    labs(x = "theoretical quantiles", y = "sample quantiles") +
+    scale_colour_manual(values = c("#648FFF", "#DC267F"), drop = FALSE) +
+    facet_wrap(vars(group), drop = FALSE) +
+    theme_minimal() +
+    theme(
+      strip.text = element_text(size = 14),
+      axis.title = element_text(size = 14),
+      axis.text = element_text(size = 12),
+      legend.position = "none"
+    )
 }
 
 # t-distribution plot for the given t-test result
@@ -548,7 +577,13 @@ and often criticised within the statistics community.
           ),
           tabsetPanel(
             tabPanel(
-              "Q-Q plot"
+              "Q-Q plot",
+              fluidRow(
+                column(
+                  width = 5,
+                  plotOutput("one_sample_qq_plot", height = "400px")
+                )
+              )
             ),
             tabPanel(
               "Shapiro-Wilk test",
@@ -848,7 +883,13 @@ and often criticised within the statistics community.
             condition = "!input.two_sample_paired",
             tabsetPanel(
               tabPanel(
-                "Q-Q plot"
+                "Q-Q plot",
+                fluidRow(
+                  column(
+                    width = 8,
+                    plotOutput("two_sample_qq_plot", height = "400px")
+                  )
+                )
               ),
               tabPanel(
                 "Shapiro-Wilk test",
@@ -928,7 +969,13 @@ plots.
             condition = "input.two_sample_paired",
             tabsetPanel(
               tabPanel(
-                "Q-Q plot"
+                "Q-Q plot",
+                fluidRow(
+                  column(
+                    width = 5,
+                    plotOutput("paired_qq_plot", height = "400px")
+                  )
+                )
               ),
               tabPanel(
                 "Shapiro-Wilk test",
@@ -1473,27 +1520,47 @@ server <- function(input, output, session) {
       plot_layout(heights = c(1, 0.25, 1))
   })
 
-  # one sample Shapiro-Wilk test
-  output$one_sample_shapiro_wilk_test <- renderPrint({
+  # one sample Q-Q plot
+  output$one_sample_qq_plot <- renderPlot({
     values <- one_sample_transformed_data()
 
     # filter out missing values
     values <- values[is.finite(values)]
 
     if (is_empty(values)) {
-      cat("No data values")
-    } else if (length(values) < 3) {
-      cat("Too few values")
-    } else {
-      cat("shapiro.test(values)\n")
-
-      result <- shapiro.test(values)
-
-      # override the data name
-      result$data.name <- input$one_sample_variable
-
-      result
+      return(NULL)
     }
+
+    create_qq_plot(values)
+  })
+
+  # one sample Shapiro-Wilk test
+  output$one_sample_shapiro_wilk_test <- renderPrint({
+    values <- one_sample_transformed_data()
+
+    if (is_empty(values)) {
+      cat(" ")
+    } else {
+      # filter out missing values
+      values <- values[is.finite(values)]
+
+      if (is_empty(values)) {
+        cat("No observations")
+      } else if (length(values) < 3) {
+        cat("Too few observations")
+      } else {
+        cat("shapiro.test(values)\n")
+
+        result <- shapiro.test(values)
+
+        # override the data name
+        result$data.name <- input$one_sample_variable
+
+        result
+      }
+    }
+
+
   })
 
   # one sample t-test
@@ -1504,7 +1571,7 @@ server <- function(input, output, session) {
     # filter out missing values
     values <- values[is.finite(values)]
 
-    if (length(values) < 2 || !is.finite(hypothesized_mean)) {
+    if (length(values) < 3 || !is.finite(hypothesized_mean)) {
       return(NULL)
     }
 
@@ -1524,27 +1591,31 @@ server <- function(input, output, session) {
     values <- one_sample_transformed_data()
     hypothesized_mean <- one_sample_hypothesized_mean()
 
-    # filter out missing values
-    values <- values[is.finite(values)]
-
     if (is_empty(values)) {
-      cat("No data values")
-    } else if (length(values) < 3) {
-      cat("Too few values")
-    } else if (is.na(hypothesized_mean)) {
-      cat("Hypothesized mean is not set")
-    } else if (!is.finite(hypothesized_mean)) {
-      cat("Hypothesized mean is not finite")
+      cat(" ")
     } else {
-      cat(
-        "t.test(values, mu = ", hypothesized_mean,
-        ", alternative = \"", input$one_sample_alternative, "\")\n",
-        sep = ""
-      )
+      # filter out missing values
+      values <- values[is.finite(values)]
 
-      result <- one_sample_t_test()
-      if (!is.null(result)) {
-        result
+      if (is_empty(values)) {
+        cat("No observations")
+      } else if (length(values) < 3) {
+        cat("Too few observations")
+      } else if (is.na(hypothesized_mean)) {
+        cat("Hypothesized mean is not set")
+      } else if (!is.finite(hypothesized_mean)) {
+        cat("Hypothesized mean is not finite")
+      } else {
+        cat(
+          "t.test(values, mu = ", hypothesized_mean,
+          ", alternative = \"", input$one_sample_alternative, "\")\n",
+          sep = ""
+        )
+
+        result <- one_sample_t_test()
+        if (!is.null(result)) {
+          result
+        }
       }
     }
   })
@@ -1562,34 +1633,38 @@ server <- function(input, output, session) {
     hypothesized_mean <- one_sample_hypothesized_mean()
     alternative <- input$one_sample_alternative
 
-    # filter out missing values
-    values <- values[is.finite(values)]
-
     if (is_empty(values)) {
-      cat("No data values")
-    } else if (length(values) < 3) {
-      cat("Too few values")
-    } else if (is.na(hypothesized_mean)) {
-      cat("Hypothesized mean is not set")
-    } else if (!is.finite(hypothesized_mean)) {
-      cat("Hypothesized mean is not finite")
+      cat(" ")
     } else {
-      cat(
-        "wilcox.test(values, mu = ", hypothesized_mean,
-        ", alternative = \"", input$one_sample_alternative, "\")\n",
-        sep = ""
-      )
+      # filter out missing values
+      values <- values[is.finite(values)]
 
-      result <- wilcox.test(
-        values,
-        mu = hypothesized_mean,
-        alternative = alternative
-      )
+      if (is_empty(values)) {
+        cat("No observations")
+      } else if (length(values) < 3) {
+        cat("Too few observations")
+      } else if (is.na(hypothesized_mean)) {
+        cat("Hypothesized mean is not set")
+      } else if (!is.finite(hypothesized_mean)) {
+        cat("Hypothesized mean is not finite")
+      } else {
+        cat(
+          "wilcox.test(values, mu = ", hypothesized_mean,
+          ", alternative = \"", input$one_sample_alternative, "\")\n",
+          sep = ""
+        )
 
-      # override the data name
-      result$data.name <- input$one_sample_variable
+        result <- wilcox.test(
+          values,
+          mu = hypothesized_mean,
+          alternative = alternative
+        )
 
-      result
+        # override the data name
+        result$data.name <- input$one_sample_variable
+
+        result
+      }
     }
   })
 
@@ -2032,6 +2107,38 @@ server <- function(input, output, session) {
     plots
   })
 
+  # two sample Q-Q plot
+  output$two_sample_qq_plot <- renderPlot({
+    data <- two_sample_transformed_data()
+    if (is_empty(data)) {
+      return(NULL)
+    }
+
+    data <- filter(data, is.finite(value))
+    if (nrow(data) == 0) {
+      return(NULL)
+    }
+
+    groups <- data$group
+    values <- data$value
+
+    create_qq_plot(values, groups)
+  })
+
+  # paired Q-Q plot
+  output$paired_qq_plot <- renderPlot({
+    values <- two_sample_transformed_diffs()
+
+    # filter out missing values
+    values <- values[is.finite(values)]
+
+    if (is_empty(values)) {
+      return(NULL)
+    }
+
+    create_qq_plot(values)
+  })
+
   # two sample Shapiro-Wilk test - first group
   output$two_sample_shapiro_wilk_test1 <- renderPrint({
     data <- two_sample_transformed_data()
@@ -2047,7 +2154,7 @@ server <- function(input, output, session) {
         pull(value)
 
       if (length(values) < 3) {
-        cat("Too few values")
+        cat("Too few observations in group 1 (", variable, ")", sep = "")
       } else {
         cat("# Group 1: ", variable, "\n", sep = "")
         cat("shapiro.test(group1)\n")
@@ -2077,7 +2184,7 @@ server <- function(input, output, session) {
         pull(value)
 
       if (length(values) < 3) {
-        cat("Too few values")
+        cat("Too few observations in group 2 (", variable, ")", sep = "")
       } else {
         cat("# Group 2: ", variable, "\n", sep = "")
         cat("shapiro.test(group2)\n")
@@ -2096,22 +2203,26 @@ server <- function(input, output, session) {
   output$two_sample_paired_shapiro_wilk <- renderPrint({
     values <- two_sample_transformed_diffs()
 
-    # filter out missing values
-    values <- values[is.finite(values)]
-
     if (is_empty(values)) {
-      cat("No data values")
-    } else if (length(values) < 3) {
-      cat("Too few values")
+      cat(" ")
     } else {
-      cat("shapiro.test(differences)\n")
+      # filter out missing values
+      values <- values[is.finite(values)]
 
-      result <- shapiro.test(values)
+      if (is_empty(values)) {
+        cat("No observations")
+      } else if (length(values) < 3) {
+        cat("Too few observations")
+      } else {
+        cat("shapiro.test(differences)\n")
 
-      # override the data name
-      result$data.name <- "differences"
+        result <- shapiro.test(values)
 
-      result
+        # override the data name
+        result$data.name <- "differences"
+
+        result
+      }
     }
   })
 
@@ -2137,12 +2248,12 @@ server <- function(input, output, session) {
 
       if (length(values1) < 3) {
         if (length(values2) < 3) {
-          cat("Two few values")
+          cat("Two few observations")
         } else {
-          cat("Two few values in group 1")
+          cat("Two few observations in group 1")
         }
       } else if (length(values2) < 3) {
-          cat("Two few values in group 2")
+          cat("Two few observations in group 2")
       } else {
         cat("var.test(group1, group2)\n")
         var.test(values1, values2)
@@ -2171,7 +2282,7 @@ server <- function(input, output, session) {
       filter(is.finite(value)) %>%
       pull(value)
 
-    if (length(values1) < 2 || length(values2) < 2) {
+    if (length(values1) < 3 || length(values2) < 3) {
       return(NULL)
     }
 
@@ -2191,7 +2302,7 @@ server <- function(input, output, session) {
     data <- two_sample_transformed_data()
 
     if (is_empty(data)) {
-      cat("No data values")
+      cat(" ")
     } else {
       variable1 <- input$two_sample_group1
       variable2 <- input$two_sample_group2
@@ -2207,9 +2318,13 @@ server <- function(input, output, session) {
         pull(value)
 
       if (length(values1) < 3) {
-        cat("Too few values in group 1 (", variable1, ")", sep = "")
+        if (length(values2) < 3) {
+          cat("Too few observations in both groups")
+        } else {
+          cat("Too few observations in group 1 (", variable1, ")", sep = "")
+        }
       } else if (length(values2) < 3) {
-        cat("Too few values in group 2 (", variable2, ")", sep = "")
+        cat("Too few observations in group 2 (", variable2, ")", sep = "")
       } else {
         cat(
           "t.test(group1, group2, ",
@@ -2238,7 +2353,7 @@ server <- function(input, output, session) {
     data <- two_sample_transformed_data()
 
     if (is_empty(data)) {
-      cat("No data values")
+      cat(" ")
     } else {
       variable1 <- input$two_sample_group1
       variable2 <- input$two_sample_group2
@@ -2254,9 +2369,13 @@ server <- function(input, output, session) {
         pull(value)
 
       if (length(values1) < 3) {
-        cat("Too few values in group 1 (", variable1, ")", sep = "")
+        if (length(values2) < 3) {
+          cat("Too few observations in both groups")
+        } else {
+          cat("Too few observations in group 1 (", variable1, ")", sep = "")
+        }
       } else if (length(values2) < 3) {
-        cat("Too few values in group 2 (", variable2, ")", sep = "")
+        cat("Too few observations in group 2 (", variable2, ")", sep = "")
       } else {
         cat(
           "wilcox.test(group1, group2, ",
@@ -2286,10 +2405,17 @@ server <- function(input, output, session) {
       return(NULL)
     }
 
-    data <- filter(data, if_any(everything(), is.finite))
-    if (nrow(data) < 2) {
+    differences <- two_sample_transformed_diffs()
+
+    # filter out missing or non-finite values
+    differences <- differences[is.finite(differences)]
+
+    if (length(differences) < 3) {
       return(NULL)
     }
+
+    # filter out missing values
+    data <- filter(data, if_all(everything(), is.finite))
 
     variable1 <- input$two_sample_variable1
     variable2 <- input$two_sample_variable2
@@ -2313,11 +2439,17 @@ server <- function(input, output, session) {
     data <- two_sample_transformed_paired_data()
 
     if (is_empty(data)) {
-      cat("No data values")
+      cat(" ")
     } else {
-      data <- filter(data, if_any(everything(), is.finite))
+      differences <- two_sample_transformed_diffs()
 
-      if (nrow(data) < 2) {
+      # filter out missing values
+      data <- filter(data, if_all(everything(), is.finite))
+      differences <- differences[is.finite(differences)]
+
+      if (is_empty(differences)) {
+        cat("No observations")
+      } else if (length(differences) < 3) {
         cat("Too few observations")
       } else {
         variable1 <- input$two_sample_variable1
@@ -2353,11 +2485,17 @@ server <- function(input, output, session) {
     data <- two_sample_transformed_paired_data()
 
     if (is_empty(data)) {
-      cat("No data values")
+      cat(" ")
     } else {
-      data <- filter(data, if_any(everything(), is.finite))
+      differences <- two_sample_transformed_diffs()
 
-      if (nrow(data) < 2) {
+      # filter out missing values
+      differences <- differences[is.finite(differences)]
+      data <- filter(data, if_all(everything(), is.finite))
+
+      if (is_empty(differences)) {
+        cat("No observations")
+      } else if (length(differences) < 3) {
         cat("Too few observations")
       } else {
         variable1 <- input$two_sample_variable1
