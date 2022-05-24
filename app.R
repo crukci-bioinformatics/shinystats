@@ -1493,9 +1493,6 @@ server <- function(input, output, session) {
     number_of_bins <- NULL
     if (input$one_sample_choose_number_of_bins) {
       number_of_bins <- input$one_sample_number_of_bins
-      if (is.na(number_of_bins)) {
-        number_of_bins <- NULL
-      }
     }
 
     histogram <- create_histogram(
@@ -2044,9 +2041,6 @@ server <- function(input, output, session) {
     number_of_bins <- NULL
     if (input$two_sample_choose_number_of_bins) {
       number_of_bins <- input$two_sample_number_of_bins
-      if (is.na(number_of_bins)) {
-        number_of_bins <- NULL
-      }
     }
 
     histogram <- create_histogram(
@@ -2074,9 +2068,6 @@ server <- function(input, output, session) {
         number_of_bins <- NULL
         if (input$two_sample_choose_number_of_bins) {
           number_of_bins <- input$two_sample_number_of_bins
-          if (is.na(number_of_bins)) {
-            number_of_bins <- NULL
-          }
         }
 
         difference_histogram <- create_histogram(
