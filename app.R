@@ -617,12 +617,7 @@ continuous and a random sample from a population that is normally distributed.
               conditionalPanel(
                 condition = "input.one_sample_test_type == 'Non-parametric'",
                 h4("Wilcoxon signed rank test"),
-                fluidRow(
-                  column(
-                    width = 10,
-                    verbatimTextOutput("one_sample_wilcoxon_test")
-                  )
-                )
+                verbatimTextOutput("one_sample_wilcoxon_test")
               )
             )
           )
@@ -1019,30 +1014,47 @@ the samples have unequal variances and/or sample sizes.
             ),
             mainPanel(
               conditionalPanel(
-                condition = "input.two_sample_test_type == 'Parametric'",
-                h4("Two sample t-test"),
-                fluidRow(
-                  column(
-                    width = 11,
-                    verbatimTextOutput("two_sample_t_test")
+                condition = "!input.two_sample_paired",
+                conditionalPanel(
+                  condition = "input.two_sample_test_type == 'Parametric'",
+                  conditionalPanel(
+                    condition = "input.two_sample_equal_variance",
+                    h4("Two sample t-test")
+                  ),
+                  conditionalPanel(
+                    condition = "!input.two_sample_equal_variance",
+                    h4("Welch two sample t-test")
+                  ),
+                  verbatimTextOutput("two_sample_t_test"),
+                  plotOutput(
+                    "two_sample_t_plot",
+                    height = "300px",
+                    width = "80%"
                   )
                 ),
-                fluidRow(
-                  column(
-                    width = 9,
-                    offset = 1,
-                    plotOutput("two_sample_t_plot", height = "300px")
-                  )
+                conditionalPanel(
+                  condition = "input.two_sample_test_type == 'Non-parametric'",
+                  h4("Wilcoxon rank sum test"),
+                  helpText("Also known as the Mann-Whitney U test."),
+                  verbatimTextOutput("two_sample_wilcoxon_test")
                 )
               ),
               conditionalPanel(
-                condition = "input.two_sample_test_type == 'Non-parametric'",
-                h4("Wilcoxon rank sum test"),
-                fluidRow(
-                  column(
-                    width = 10,
-                    verbatimTextOutput("two_sample_wilcoxon_test")
+                condition = "input.two_sample_paired",
+                conditionalPanel(
+                  condition = "input.two_sample_test_type == 'Parametric'",
+                  h4("Paired t-test"),
+                  verbatimTextOutput("paired_t_test"),
+                  plotOutput(
+                    "paired_t_plot",
+                    height = "300px",
+                    width = "80%"
                   )
+                ),
+                conditionalPanel(
+                  condition = "input.two_sample_test_type == 'Non-parametric'",
+                  h4("Wilcoxon signed rank test"),
+                  verbatimTextOutput("paired_wilcoxon_test")
                 )
               )
             )
@@ -1170,6 +1182,25 @@ server <- function(input, output, session) {
       "two_sample_tabs",
       selected = "Plots"
     )
+
+    updateRadioButtons(
+      session,
+      "two_sample_test_type",
+      selected = "Parametric"
+    )
+
+    updateCheckboxInput(
+      session,
+      "two_sample_equal_variance",
+      value = FALSE
+    )
+
+    updateRadioButtons(
+      session,
+      "two_sample_alternative",
+      selected = "two.sided"
+    )
+
   }
 
   reactive_values <- reactiveValues(data = NULL)
@@ -1346,16 +1377,16 @@ server <- function(input, output, session) {
 
     transform <- input$one_sample_transformation
 
-    if (transform == "natural_log" & any(values < 0)) {
+    if (transform == "natural_log" && any(values < 0)) {
       return(
         "Log transformation may not be suitable as there are negative values."
       )
     }
-    if (transform == "natural_log" & any(values == 0)) {
+    if (transform == "natural_log" && any(values == 0)) {
       return("Log transformation may not be suitable as there are zero values.")
     }
 
-    if (transform == "square_root" & any(values < 0)) {
+    if (transform == "square_root" && any(values < 0)) {
       return(str_c(
         "Square root transformation may not be suitable as there are negative ",
         "values."
@@ -1473,7 +1504,7 @@ server <- function(input, output, session) {
     # filter out missing values
     values <- values[is.finite(values)]
 
-    if (length(values) < 2 | !is.finite(hypothesized_mean)) {
+    if (length(values) < 2 || !is.finite(hypothesized_mean)) {
       return(NULL)
     }
 
@@ -1693,16 +1724,48 @@ server <- function(input, output, session) {
 
     if (!is_empty(data)) {
       data <- data %>%
-        mutate(value = transform(
-          value,
-          input$two_sample_transformation
-        ))
+        mutate(value = transform(value, input$two_sample_transformation))
     }
 
     data
   })
 
   # selected data for two sample test - paired observations
+  two_sample_paired_data <- reactive({
+    if (input$two_sample_paired) {
+      data <- data()
+
+      # paired observations in two numerical columns
+      variable1 <- input$two_sample_variable1
+      variable2 <- input$two_sample_variable2
+
+      if (variable1 == "" || variable2 == "" ||
+          variable1 == variable2 ||
+          !variable1 %in% colnames(data) ||
+          !variable2 %in% colnames(data)
+      ) {
+        tibble()
+      } else {
+        select(data, all_of(c(variable1, variable2)))
+      }
+    }
+    else {
+      tibble()
+    }
+  })
+
+  two_sample_transformed_paired_data <- reactive({
+    data <- two_sample_paired_data()
+
+    if (!is_empty(data)) {
+      data <- data %>%
+        mutate(across(everything(), transform, input$two_sample_transformation))
+    }
+
+    data
+  })
+
+  # selected data for two sample test - differences in paired observations
   two_sample_paired_differences <- reactive({
 
     if (input$two_sample_paired) {
@@ -1799,19 +1862,19 @@ server <- function(input, output, session) {
       # filter out missing values
       values <- values[is.finite(values)]
 
-      if (transform == "natural_log" & any(values < 0)) {
+      if (transform == "natural_log" && any(values < 0)) {
         return(
           "Log transformation may not be suitable as there are negative values."
         )
       }
-      if (transform == "natural_log" & any(values == 0)) {
+      if (transform == "natural_log" && any(values == 0)) {
         return(str_c(
           "Log transformation may not be suitable as there are zero ",
           "values."
         ))
       }
 
-      if (transform == "square_root" & any(values < 0)) {
+      if (transform == "square_root" && any(values < 0)) {
         return(str_c(
           "Square root transformation may not be suitable as there are ",
           "negative values."
@@ -2086,6 +2149,245 @@ server <- function(input, output, session) {
       }
     }
   })
+
+  # two sample t-test
+  two_sample_t_test <- reactive({
+    data <- two_sample_transformed_data()
+
+    if (is_empty(data)) {
+      return(NULL)
+    }
+
+    variable1 <- input$two_sample_group1
+    variable2 <- input$two_sample_group2
+
+    values1 <- data %>%
+      filter(group == variable1) %>%
+      filter(is.finite(value)) %>%
+      pull(value)
+
+    values2 <- data %>%
+      filter(group == variable2) %>%
+      filter(is.finite(value)) %>%
+      pull(value)
+
+    if (length(values1) < 2 || length(values2) < 2) {
+      return(NULL)
+    }
+
+    result <- t.test(
+      values1, values2,
+      alternative = input$two_sample_alternative,
+      var.equal = input$two_sample_equal_variance
+    )
+
+    # override the data name
+    result$data.name <- str_c(variable1, " and ", variable2)
+
+    result
+  })
+
+  output$two_sample_t_test <- renderPrint({
+    data <- two_sample_transformed_data()
+
+    if (is_empty(data)) {
+      cat("No data values")
+    } else {
+      variable1 <- input$two_sample_group1
+      variable2 <- input$two_sample_group2
+
+      values1 <- data %>%
+        filter(group == variable1) %>%
+        filter(is.finite(value)) %>%
+        pull(value)
+
+      values2 <- data %>%
+        filter(group == variable2) %>%
+        filter(is.finite(value)) %>%
+        pull(value)
+
+      if (length(values1) < 3) {
+        cat("Too few values in group 1 (", variable1, ")", sep = "")
+      } else if (length(values2) < 3) {
+        cat("Too few values in group 2 (", variable2, ")", sep = "")
+      } else {
+        cat(
+          "t.test(group1, group2, ",
+          "alternative = \"", input$two_sample_alternative, "\", ",
+          "var.equal = ", input$two_sample_equal_variance, ")\n",
+          sep = ""
+        )
+
+        result <- two_sample_t_test()
+        if (!is.null(result)) {
+          result
+        }
+      }
+    }
+  })
+
+  output$two_sample_t_plot <- renderPlot({
+      result <- two_sample_t_test()
+      if (!is.null(result)) {
+        create_t_distribution_plot(result)
+      }
+  })
+
+  # two sample Wilcoxon rank sum test
+  output$two_sample_wilcoxon_test <- renderPrint({
+    data <- two_sample_transformed_data()
+
+    if (is_empty(data)) {
+      cat("No data values")
+    } else {
+      variable1 <- input$two_sample_group1
+      variable2 <- input$two_sample_group2
+
+      values1 <- data %>%
+        filter(group == variable1) %>%
+        filter(is.finite(value)) %>%
+        pull(value)
+
+      values2 <- data %>%
+        filter(group == variable2) %>%
+        filter(is.finite(value)) %>%
+        pull(value)
+
+      if (length(values1) < 3) {
+        cat("Too few values in group 1 (", variable1, ")", sep = "")
+      } else if (length(values2) < 3) {
+        cat("Too few values in group 2 (", variable2, ")", sep = "")
+      } else {
+        cat(
+          "wilcox.test(group1, group2, ",
+          "alternative = \"", input$two_sample_alternative, "\")\n",
+          sep = ""
+        )
+
+        result <- wilcox.test(
+          values1,
+          values2,
+          alternative = input$two_sample_alternative
+        )
+
+        # override the data name
+        result$data.name <- str_c(variable1, " and ", variable2)
+
+        result
+      }
+    }
+  })
+
+  # paired t-test
+  paired_t_test <- reactive({
+    data <- two_sample_transformed_paired_data()
+
+    if (is_empty(data)) {
+      return(NULL)
+    }
+
+    data <- filter(data, if_any(everything(), is.finite))
+    if (nrow(data) < 2) {
+      return(NULL)
+    }
+
+    variable1 <- input$two_sample_variable1
+    variable2 <- input$two_sample_variable2
+
+    values1 <- pull(data, variable1)
+    values2 <- pull(data, variable2)
+
+    result <- t.test(
+      values1, values2,
+      alternative = input$two_sample_alternative,
+      paired = TRUE
+    )
+
+    # override the data name
+    result$data.name <- str_c(variable1, " and ", variable2)
+
+    result
+  })
+
+  output$paired_t_test <- renderPrint({
+    data <- two_sample_transformed_paired_data()
+
+    if (is_empty(data)) {
+      cat("No data values")
+    } else {
+      data <- filter(data, if_any(everything(), is.finite))
+
+      if (nrow(data) < 2) {
+        cat("Too few observations")
+      } else {
+        variable1 <- input$two_sample_variable1
+        variable2 <- input$two_sample_variable2
+
+        values1 <- pull(data, variable1)
+        values2 <- pull(data, variable2)
+
+        cat(
+          "t.test(variable1, variable1, ",
+          "alternative = \"", input$two_sample_alternative, "\", ",
+          "paired = TRUE)\n",
+          sep = ""
+        )
+
+        result <- paired_t_test()
+        if (!is.null(result)) {
+          result
+        }
+      }
+    }
+  })
+
+  output$paired_t_plot <- renderPlot({
+      result <- paired_t_test()
+      if (!is.null(result)) {
+        create_t_distribution_plot(result)
+      }
+  })
+
+  # paired Wilcoxon signed rank test
+  output$paired_wilcoxon_test <- renderPrint({
+    data <- two_sample_transformed_paired_data()
+
+    if (is_empty(data)) {
+      cat("No data values")
+    } else {
+      data <- filter(data, if_any(everything(), is.finite))
+
+      if (nrow(data) < 2) {
+        cat("Too few observations")
+      } else {
+        variable1 <- input$two_sample_variable1
+        variable2 <- input$two_sample_variable2
+
+        values1 <- pull(data, variable1)
+        values2 <- pull(data, variable2)
+
+        cat(
+          "wilcox.test(variable1, variable2, ",
+          "alternative = \"", input$two_sample_alternative, "\", ",
+          "paired = TRUE)\n",
+          sep = ""
+        )
+
+        result <- wilcox.test(
+          values1,
+          values2,
+          alternative = input$two_sample_alternative,
+          paired = TRUE
+        )
+
+        # override the data name
+        result$data.name <- str_c(variable1, " and ", variable2)
+
+        result
+      }
+    }
+  })
+
 }
 
 shinyApp(ui, server)
