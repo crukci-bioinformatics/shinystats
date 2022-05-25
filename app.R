@@ -78,47 +78,7 @@ datasets <- list(
   "Sibling chick weights reared in confinement or on open range" = read_csv(
     "datasets/chick_weights.csv",
     col_types = "cdd"
-  ),
-  "Test1" = tibble(
-    Before = c(12, 13, 10, 10, 16, 15, 14),
-    After = c(10, 12, 8, 9, 15, 12, 13)
-  ),
-  "Test2" = tibble(
-    Group = c(rep("WT", 25), rep("KO", 25)),
-    Expression = -round(c(rnorm(25, 0.2, 0.01), rnorm(25, 0.21, 0.015)), digits = 3)
-  ),
-  "Test3" = tibble(
-    A = -round(rnorm(25, 0.2, 0.01), digits = 3),
-    B = -round(rnorm(25, 0.3, 0.015), digits = 3)
-  ),
-  "Test4" = tibble(
-    Group = c(rep("WT", 25), rep("KO", 25)),
-    Expression = round(c(rnorm(25, 0.1, 0.01), rnorm(25, -0.1, 0.015)), digits = 3)
-  ),
-  "Test5" = tibble(
-    Group = c(rep("WT", 5), rep("KO", 5)),
-    Value = c(-1, -1.5, 0.6, 1.7, -0.25, 0.9, 0.1, 1.2, 1.5, 0.5)
-  ),
-  "Test6" = tibble(
-    A = c(5, 8, 7, 9, 8),
-    B = c(6, 7, 7, 8, 10)
-  ),
-  "Test7" = tibble(
-    Expression = c(1.3, 1.4, NA)
-  ),
-  "Test8" = tibble(
-    Group = c("WT", "WT", "KO", "KO"),
-    Expression = c(1.3, 1.4, 1.6, 1.55)
-  ),
-  "Test9" = tibble(
-    Before = c(1.3, 1.4, NA),
-    After = c(1.5, 1.55, 1.6)
-  ),
-  "Negative values" = tibble(negative = rnorm(30, -50, 5)) %>%
-    filter(negative < 0),
-  "Categories" = tibble(Group = c("WT", "WT", "WT", "KO", "KO", "KO")),
-  "Letters" = tibble(letter = letters),
-  "Empty" = tibble()
+  )
 )
 
 # useful functions
