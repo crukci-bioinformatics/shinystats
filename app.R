@@ -724,7 +724,24 @@ and often criticised within the statistics community.
               tabsetPanel(
                 tabPanel(
                   "Q-Q plot",
-                  plotOutput("one_sample_qq_plot", height = "400px", width = "55%")
+                  helpText("
+The Q-Q (quantile-quantile) plot compares the data with a normal distribution by
+plotting their quantiles against each other.
+                  "),
+                  plotOutput("one_sample_qq_plot", height = "400px", width = "55%"),
+                  helpText("
+The theoretical quantiles are for a standard normal distribution with mean 0 and
+standard deviation 1.
+                  "),
+                  helpText("
+The diagonal line connects the first and third quartiles. The points will lie
+approximately along the line if the data are normally distributed.
+                  "),
+                  helpText("
+Significant deviations from the line may indicate that the data are not from a
+population with a normal distribution and suggests that a non-parametric test
+should be used.
+                  ")
                 ),
                 tabPanel(
                   "Shapiro-Wilk test",
@@ -792,7 +809,7 @@ continuous and a random sample from a population that is normally distributed.
                 h4("Wilcoxon signed rank test"),
                 helpText("
 Tests whether the data come from a symmetric population centred around a
-specified median value (that given in the 'hypothesized mean' box above).
+specified median value.
                 "),
                 verbatimTextOutput("one_sample_wilcoxon_test")
               )
@@ -1023,7 +1040,24 @@ and often criticised within the statistics community.
                 tabsetPanel(
                   tabPanel(
                     "Q-Q plot",
-                    plotOutput("two_sample_qq_plot", height = "400px")
+                    helpText("
+The Q-Q (quantile-quantile) plot compares the data with a normal distribution by
+plotting their quantiles against each other.
+                    "),
+                    plotOutput("two_sample_qq_plot", height = "400px"),
+                    helpText("
+The theoretical quantiles are for a standard normal distribution with mean 0 and
+standard deviation 1.
+                    "),
+                    helpText("
+The diagonal line connects the first and third quartiles. The points will lie
+approximately along the line if the data are normally distributed.
+                    "),
+                    helpText("
+Significant deviations from the line may indicate that the data are not from a
+population with a normal distribution and suggests that a non-parametric test
+should be used.
+                    ")
                   ),
                   tabPanel(
                     "Shapiro-Wilk test",
@@ -1089,7 +1123,25 @@ plots.
                 tabsetPanel(
                   tabPanel(
                     "Q-Q plot",
-                    plotOutput("paired_qq_plot", height = "400px", width = "55%")
+                    helpText("
+The Q-Q (quantile-quantile) plot compares the data with a normal distribution by
+plotting their quantiles against each other. In the paired two sample case,
+quantiles for the differences between pairs of measurements are used.
+                    "),
+                    plotOutput("paired_qq_plot", height = "400px", width = "55%"),
+                    helpText("
+The theoretical quantiles are for a standard normal distribution with mean 0 and
+standard deviation 1.
+                    "),
+                    helpText("
+The diagonal line connects the first and third quartiles. The points will lie
+approximately along the line if the data are normally distributed.
+                    "),
+                    helpText("
+Significant deviations from the line may indicate that the data are not from a
+population with a normal distribution and suggests that a non-parametric test
+should be used.
+                    ")
                   ),
                   tabPanel(
                     "Shapiro-Wilk test",
@@ -1886,7 +1938,7 @@ server <- function(input, output, session) {
     data <- two_sample_data()
     if (input$two_sample_paired) {
       mutate(data, `__difference__` =
-        transform(`__difference__`, input$two_sample_transformation)
+        transform(`__difference__`, input$two_sample_paired_transformation)
       )
     } else {
       mutate(data, value = transform(value, input$two_sample_transformation))
@@ -2010,8 +2062,8 @@ server <- function(input, output, session) {
 
         if (input$two_sample_paired) {
           difference_statistics <- data %>%
-            distinct(observation, difference) %>%
-            pull(difference) %>%
+            distinct(`__observation__`, `__difference__`) %>%
+            pull(`__difference__`) %>%
             summary_statistics() %>%
             pivot_longer(
               everything(),
@@ -2276,7 +2328,7 @@ server <- function(input, output, session) {
 
         cat(
           "t.test(group1, group2, ",
-          "alternative = \"", alternative, "\", ",
+          "alternative = \"", result$alternative, "\", ",
           "var.equal = ", equal_variance, ")\n",
           sep = ""
         )
@@ -2355,7 +2407,7 @@ server <- function(input, output, session) {
 
         cat(
           "wilcox.test(group1, group2, ",
-          "alternative = \"", alternative, "\")\n",
+          "alternative = \"", result$alternative, "\")\n",
           sep = ""
         )
 
@@ -2405,7 +2457,7 @@ server <- function(input, output, session) {
 
           cat(
             "t.test(variable1, variable2, ",
-            "alternative = \"", alternative, "\", ",
+            "alternative = \"", result$alternative, "\", ",
             "paired = TRUE)\n",
             sep = ""
           )
@@ -2547,7 +2599,7 @@ server <- function(input, output, session) {
 
           cat(
             "wilcox.test(variable1, variable2, ",
-            "alternative = \"", alternative, "\", ",
+            "alternative = \"", result$alternative, "\", ",
             "paired = TRUE)\n",
             sep = ""
           )
