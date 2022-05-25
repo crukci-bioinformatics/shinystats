@@ -103,6 +103,17 @@ datasets <- list(
     A = c(5, 8, 7, 9, 8),
     B = c(6, 7, 7, 8, 10)
   ),
+  "Test7" = tibble(
+    Expression = c(1.3, 1.4, NA)
+  ),
+  "Test8" = tibble(
+    Group = c("WT", "WT", "KO", "KO"),
+    Expression = c(1.3, 1.4, 1.6, 1.55)
+  ),
+  "Test9" = tibble(
+    Before = c(1.3, 1.4, NA),
+    After = c(1.5, 1.55, 1.6)
+  ),
   "Negative values" = tibble(negative = rnorm(30, -50, 5)) %>%
     filter(negative < 0),
   "Categories" = tibble(Group = c("WT", "WT", "WT", "KO", "KO", "KO")),
@@ -158,7 +169,7 @@ create_boxplot <- function(values,
   }
 
   data <- tibble(value = values, group = groups) %>%
-    filter(if_all(everything(), is.finite))
+    filter(is.finite(value))
 
   if (nrow(data) == 0) {
     return(ggplot() + theme_minimal())
@@ -237,7 +248,7 @@ create_histogram <- function(values,
   }
 
   data <- tibble(value = values, group = groups) %>%
-    filter(if_all(everything(), is.finite))
+    filter(is.finite(value))
 
   if (nrow(data) == 0) {
     return(ggplot() + theme_minimal())
@@ -310,7 +321,7 @@ create_qq_plot <- function(values, groups = "") {
   }
 
   data <- tibble(value = values, group = groups) %>%
-    filter(if_all(everything(), is.finite))
+    filter(is.finite(value))
 
   if (nrow(data) == 0) {
     return(ggplot() + theme_minimal())
@@ -406,6 +417,159 @@ create_t_distribution_plot <- function(t_test_result) {
     )
 
   plot
+}
+
+# check validity of a single value
+check_value <- function(value, name = "Value", context = NULL) {
+  if (!is.null(context)) {
+    context <- str_c(" ", context)
+  }
+
+  if (is.null(value)) {
+    stop(name, " is unset", context)
+  }
+
+  if (is.nan(value)) {
+    stop(name, " is invalid", context)
+  }
+
+  if (is.infinite(value)) {
+    stop(name, " is not finite", context)
+  }
+
+  if (is.na(value)) {
+    stop(name, " is unset", context)
+  }
+}
+
+# check validity of the given values
+check_values <- function(values, minimum_number = 3, context = NULL) {
+  if (!is.null(context)) {
+    context <- str_c(" ", context)
+  }
+
+  if (is_empty(values)) {
+    stop("No data", context)
+  }
+
+  if (any(is.nan(values))) {
+    stop("Data contain invalid values", context)
+  }
+
+  if (any(is.infinite(values))) {
+    stop("Data contain non-finite values.", context)
+  }
+
+  if (length(values) < minimum_number) {
+    stop("Too few observations", context)
+  }
+
+  # filter out missing values
+  values <- values[!is.na(values)]
+
+  if (is_empty(values)) {
+    stop("No observations after removing missing values", context)
+  }
+
+  if (length(values) < minimum_number) {
+    stop("Too few observations after removing missing values", context)
+  }
+}
+
+# one sample t-test
+one_sample_t_test <- function(values,
+                              hypothesized_mean,
+                              alternative = "two.sided",
+                              variable = NULL) {
+  check_values(values)
+  check_value(hypothesized_mean, "Hypothesized mean")
+
+  result <- t.test(
+    values,
+    mu = hypothesized_mean,
+    alternative = alternative
+  )
+
+  # override the data name
+  if (!is.null(variable)) {
+    result$data.name <- variable
+  }
+
+  result
+}
+
+# one sample Wilcoxon signed rank test
+one_sample_wilcoxon_test <- function(values,
+                                     hypothesized_median,
+                                     alternative = "two.sided",
+                                     variable = NULL) {
+  check_values(values)
+  check_value(hypothesized_median, "Hypothesized median")
+
+  result <- wilcox.test(
+    values,
+    mu = hypothesized_median,
+    alternative = alternative
+  )
+
+  # override the data name
+  if (!is.null(variable)) {
+    result$data.name <- variable
+  }
+
+  result
+}
+
+# two sample t-test
+two_sample_t_test <- function(values1,
+                              values2,
+                              alternative = "two.sided",
+                              equal_variance = FALSE,
+                              paired = FALSE,
+                              variable1 = NULL,
+                              variable2 = NULL) {
+  check_values(values1, "(group 1)")
+  check_values(values1, "(group 2)")
+
+  result <- t.test(
+    values1, values2,
+    alternative = alternative,
+    var.equal = equal_variance,
+    paired = paired
+  )
+
+  # override the data name
+  if (!is.null(variable1) && !is.null(variable2)) {
+    # override the data name
+    result$data.name <- str_c(variable1, " and ", variable2)
+  }
+
+  result
+}
+
+# two sample Wilcoxon rank sum test
+two_sample_wilcoxon_test <- function(values1,
+                                     values2,
+                                     alternative = "two.sided",
+                                     paired = FALSE,
+                                     variable1 = NULL,
+                                     variable2 = NULL) {
+  check_values(values1, "(group 1)")
+  check_values(values1, "(group 2)")
+
+  result <- wilcox.test(
+    values1, values2,
+    alternative = alternative,
+    paired = paired
+  )
+
+  # override the data name
+  if (!is.null(variable1) && !is.null(variable2)) {
+    # override the data name
+    result$data.name <- str_c(variable1, " and ", variable2)
+  }
+
+  result
 }
 
 # Shiny user interface
@@ -677,6 +841,10 @@ continuous and a random sample from a population that is normally distributed.
               conditionalPanel(
                 condition = "input.one_sample_test_type == 'Non-parametric'",
                 h4("Wilcoxon signed rank test"),
+                helpText("
+Tests whether the data come from a symmetric population centred around a
+specified median value (that given in the 'hypothesized mean' box above).
+                "),
                 verbatimTextOutput("one_sample_wilcoxon_test")
               )
             )
@@ -1157,7 +1325,7 @@ the samples have unequal variances and/or sample sizes.
 server <- function(input, output, session) {
 
   # clear selections
-  clear_selections <- function() {
+  reset_selections <- function() {
 
     updateSelectInput(
       session,
@@ -1281,7 +1449,7 @@ server <- function(input, output, session) {
   observe({
     file <- input$data_file
     if (!is.null(file)) {
-      clear_selections()
+      reset_selections()
       if (str_detect(file$name, regex("\\.csv$", ignore_case = TRUE))) {
         reactive_values$data <- read_csv(file$datapath)
       } else {
@@ -1293,7 +1461,7 @@ server <- function(input, output, session) {
   # select sample data set
   observe({
     sample_data <- input$sample_data
-    clear_selections()
+    reset_selections()
     reactive_values$data <- datasets[[sample_data]]
   })
 
@@ -1315,7 +1483,11 @@ server <- function(input, output, session) {
       return(character())
     }
 
-    numeric_data <- select(data, where(is.numeric))
+    # __observation__ and __difference__ are reserved names used for paired data
+    numeric_data <- data %>%
+      select(where(is.numeric)) %>%
+      select(-any_of(c("__observation__", "__difference__")))
+
     if (is_empty(numeric_data)) {
       return(character())
     }
@@ -1435,33 +1607,50 @@ server <- function(input, output, session) {
       return("No numerical variables in current data set")
     }
 
-    hypothesized_mean <- input$one_sample_hypothesized_mean
-    if (str_length(hypothesized_mean) == 0) {
-      return("Hypothesized mean is not set")
-    } else if (is.na(as.numeric(hypothesized_mean))) {
-      return("Non-numeric value specified for hypothesized mean")
-    }
-
+    # values prior to any transformation
     values <- one_sample_data()
 
     # filter out missing values
-    values <- values[is.finite(values)]
+    values <- values[!is.na(values)]
 
     transform <- input$one_sample_transformation
 
     if (transform == "natural_log" && any(values < 0)) {
       return(
-        "Log transformation may not be suitable as there are negative values."
+        "Log transformation is not suitable as there are negative values."
       )
     }
     if (transform == "natural_log" && any(values == 0)) {
-      return("Log transformation may not be suitable as there are zero values.")
+      return("Log transformation is not suitable as there are zero values.")
     }
 
     if (transform == "square_root" && any(values < 0)) {
       return(str_c(
-        "Square root transformation may not be suitable as there are negative ",
+        "Square root transformation is not suitable as there are negative ",
         "values."
+      ))
+    }
+
+    hypothesized_mean <- input$one_sample_hypothesized_mean
+
+    if (str_length(hypothesized_mean) == 0) {
+      return("Hypothesized mean is not set")
+    } else if (is.na(as.numeric(hypothesized_mean))) {
+      return("Non-numeric value specified for hypothesized mean")
+    } else if (transform == "natural_log" && hypothesized_mean < 0) {
+      return(str_c(
+        "Log transformation is not suitable if the hypothesized mean is ",
+        "negative."
+      ))
+    } else if (transform == "natural_log" && hypothesized_mean == 0) {
+      return(str_c(
+        "Log transformation is not suitable if the hypothesized mean is ",
+        "zero."
+      ))
+    } else if (transform == "square_root" && hypothesized_mean < 0) {
+      return(str_c(
+        "Square root transformation is not suitable if the hypothesized mean ",
+        "is negative."
       ))
     }
   })
@@ -1497,22 +1686,11 @@ server <- function(input, output, session) {
   # boxplot and histogram
   output$one_sample_plots <- renderPlot({
     values <- one_sample_transformed_data()
-
-    # filter out missing values
-    values <- values[is.finite(values)]
-
-    if (is_empty(values)) {
-      return(NULL)
-    }
-
     variable <- input$one_sample_variable
 
     xintercept <- NULL
     if (input$one_sample_show_hypothesized_mean) {
       xintercept <- one_sample_hypothesized_mean()
-      if (!is.finite(xintercept)) {
-        xintercept <- NULL
-      }
     }
 
     number_of_bins <- NULL
@@ -1544,109 +1722,81 @@ server <- function(input, output, session) {
 
   # one sample Q-Q plot
   output$one_sample_qq_plot <- renderPlot({
-    values <- one_sample_transformed_data()
-
-    # filter out missing values
-    values <- values[is.finite(values)]
-
-    if (is_empty(values)) {
-      return(NULL)
-    }
-
-    create_qq_plot(values)
+    create_qq_plot(one_sample_transformed_data())
   })
 
   # one sample Shapiro-Wilk test
   output$one_sample_shapiro_wilk_test <- renderPrint({
     values <- one_sample_transformed_data()
 
-    if (is_empty(values)) {
-      cat(" ")
-    } else {
-      # filter out missing values
-      values <- values[is.finite(values)]
-
-      if (is_empty(values)) {
-        cat("No observations")
-      } else if (length(values) < 3) {
-        cat("Too few observations")
-      } else {
-        cat("shapiro.test(values)\n")
+    tryCatch(
+      {
+        check_values(values)
 
         result <- shapiro.test(values)
 
         # override the data name
         result$data.name <- input$one_sample_variable
 
+        cat("shapiro.test(values)\n")
         result
+      },
+      error = function(e) {
+        cat(e$message)
       }
-    }
-
-
+    )
   })
 
   # one sample t-test
-  one_sample_t_test <- reactive({
-    values <- one_sample_transformed_data()
-    hypothesized_mean <- one_sample_hypothesized_mean()
-
-    # filter out missing values
-    values <- values[is.finite(values)]
-
-    if (length(values) < 3 || !is.finite(hypothesized_mean)) {
-      return(NULL)
-    }
-
-    result <- t.test(
-      values,
-      mu = hypothesized_mean,
-      alternative = input$one_sample_alternative
-    )
-
-    # override the data name
-    result$data.name <- input$one_sample_variable
-
-    result
-  })
-
   output$one_sample_t_test <- renderPrint({
     values <- one_sample_transformed_data()
     hypothesized_mean <- one_sample_hypothesized_mean()
+    alternative <- input$one_sample_alternative
+    variable <- input$one_sample_variable
 
-    if (is_empty(values)) {
-      cat(" ")
-    } else {
-      # filter out missing values
-      values <- values[is.finite(values)]
+    tryCatch(
+      {
+        result <- one_sample_t_test(
+          values,
+          hypothesized_mean,
+          alternative = alternative,
+          variable = variable
+        )
 
-      if (is_empty(values)) {
-        cat("No observations")
-      } else if (length(values) < 3) {
-        cat("Too few observations")
-      } else if (is.na(hypothesized_mean)) {
-        cat("Hypothesized mean is not set")
-      } else if (!is.finite(hypothesized_mean)) {
-        cat("Hypothesized mean is not finite")
-      } else {
         cat(
-          "t.test(values, mu = ", hypothesized_mean,
-          ", alternative = \"", input$one_sample_alternative, "\")\n",
+          "t.test(values, mu = ", result$null.value, ", ",
+          "alternative = \"", result$alternative, "\")\n",
           sep = ""
         )
 
-        result <- one_sample_t_test()
-        if (!is.null(result)) {
-          result
-        }
+        result
+      },
+      error = function(e) {
+        cat(e$message)
       }
-    }
+    )
   })
 
+  # one sample Student's t distribution plot
   output$one_sample_t_plot <- renderPlot({
-      result <- one_sample_t_test()
-      if (!is.null(result)) {
+    values <- one_sample_transformed_data()
+    hypothesized_mean <- one_sample_hypothesized_mean()
+    alternative <- input$one_sample_alternative
+    variable <- input$one_sample_variable
+
+    tryCatch(
+      {
+        result <- one_sample_t_test(
+          values,
+          hypothesized_mean,
+          alternative = alternative,
+          variable = variable
+        )
+
         create_t_distribution_plot(result)
-      }
+      },
+      error = function(e) {}
+    )
   })
 
   # one sample Wilcoxon signed rank test
@@ -1654,40 +1804,29 @@ server <- function(input, output, session) {
     values <- one_sample_transformed_data()
     hypothesized_mean <- one_sample_hypothesized_mean()
     alternative <- input$one_sample_alternative
+    variable <- input$one_sample_variable
 
-    if (is_empty(values)) {
-      cat(" ")
-    } else {
-      # filter out missing values
-      values <- values[is.finite(values)]
+    tryCatch(
+      {
+        result <- one_sample_wilcoxon_test(
+          values,
+          hypothesized_mean,
+          alternative = alternative,
+          variable = variable
+        )
 
-      if (is_empty(values)) {
-        cat("No observations")
-      } else if (length(values) < 3) {
-        cat("Too few observations")
-      } else if (is.na(hypothesized_mean)) {
-        cat("Hypothesized mean is not set")
-      } else if (!is.finite(hypothesized_mean)) {
-        cat("Hypothesized mean is not finite")
-      } else {
         cat(
-          "wilcox.test(values, mu = ", hypothesized_mean,
-          ", alternative = \"", input$one_sample_alternative, "\")\n",
+          "wilcox.test(values, mu = ", result$null.value, ", ",
+          "alternative = \"", result$alternative, "\")\n",
           sep = ""
         )
 
-        result <- wilcox.test(
-          values,
-          mu = hypothesized_mean,
-          alternative = alternative
-        )
-
-        # override the data name
-        result$data.name <- input$one_sample_variable
-
         result
+      },
+      error = function(e) {
+        cat(e$message)
       }
-    }
+    )
   })
 
   # two sample test
@@ -1703,6 +1842,7 @@ server <- function(input, output, session) {
     )
   })
 
+  # groups must have at least 3 values to be available for selection
   two_sample_groups <- reactive({
     data <- data()
     categorical_variable <- input$two_sample_categorical_variable
@@ -1770,7 +1910,6 @@ server <- function(input, output, session) {
 
     if (input$two_sample_paired) {
       # paired observations in two numerical columns
-
       variable1 <- input$two_sample_variable1
       variable2 <- input$two_sample_variable2
 
@@ -1779,10 +1918,17 @@ server <- function(input, output, session) {
           !variable1 %in% colnames(data) ||
           !variable2 %in% colnames(data)
       ) {
-        tibble()
+        tibble(
+          `__observation__` = numeric(),
+          `__difference__` = numeric(),
+          group = character(),
+          value = numeric()
+        )
       } else {
         data %>%
           select(all_of(c(variable1, variable2))) %>%
+          mutate(`__observation__` = row_number()) %>%
+          mutate(`__difference__` = get(variable2) - get(variable1)) %>%
           pivot_longer(
             cols = all_of(c(variable1, variable2)),
             names_to = "group",
@@ -1793,7 +1939,6 @@ server <- function(input, output, session) {
     } else {
       # data expected to be structured with one categorical variable/column
       # specifying the two or more groups and another numerical column
-
       categorical_variable <- input$two_sample_categorical_variable
       variable <- input$two_sample_variable
       group1 <- input$two_sample_group1
@@ -1805,7 +1950,10 @@ server <- function(input, output, session) {
         !categorical_variable %in% colnames(data) ||
         !variable %in% colnames(data)
       ) {
-        tibble()
+        tibble(
+          group = character(),
+          value = numeric()
+        )
       } else {
         data %>%
           select(all_of(c(categorical_variable, variable))) %>%
@@ -1818,82 +1966,20 @@ server <- function(input, output, session) {
 
   two_sample_transformed_data <- reactive({
     data <- two_sample_data()
-
-    if (!is_empty(data)) {
-      data <- data %>%
-        mutate(value = transform(value, input$two_sample_transformation))
-    }
-
-    data
-  })
-
-  # selected data for two sample test - paired observations
-  two_sample_paired_data <- reactive({
     if (input$two_sample_paired) {
-      data <- data()
-
-      # paired observations in two numerical columns
-      variable1 <- input$two_sample_variable1
-      variable2 <- input$two_sample_variable2
-
-      if (variable1 == "" || variable2 == "" ||
-          variable1 == variable2 ||
-          !variable1 %in% colnames(data) ||
-          !variable2 %in% colnames(data)
-      ) {
-        tibble()
-      } else {
-        select(data, all_of(c(variable1, variable2)))
-      }
-    }
-    else {
-      tibble()
-    }
-  })
-
-  two_sample_transformed_paired_data <- reactive({
-    data <- two_sample_paired_data()
-
-    if (!is_empty(data)) {
-      data <- data %>%
-        mutate(across(everything(), transform, input$two_sample_transformation))
-    }
-
-    data
-  })
-
-  # selected data for two sample test - differences in paired observations
-  two_sample_paired_differences <- reactive({
-
-    if (input$two_sample_paired) {
-      data <- data()
-
-      # paired observations in two numerical columns
-      variable1 <- input$two_sample_variable1
-      variable2 <- input$two_sample_variable2
-
-      if (variable1 == "" || variable2 == "" ||
-          variable1 == variable2 ||
-          !variable1 %in% colnames(data) ||
-          !variable2 %in% colnames(data)
-      ) {
-        numeric()
-      } else {
-        data %>%
-          select(all_of(c(variable1, variable2))) %>%
-          transmute(difference = get(variable2) - get(variable1)) %>%
-          pull(difference)
-      }
+      mutate(data, `__difference__` =
+        transform(`__difference__`, input$two_sample_transformation)
+      )
     } else {
-        numeric()
+      mutate(data, value = transform(value, input$two_sample_transformation))
     }
   })
 
-  two_sample_transformed_diffs <- reactive({
-    transform(
-      two_sample_paired_differences(),
-      input$two_sample_paired_transformation
-    )
+  # differences in paired observations following transformation if specified
+  two_sample_paired_differences <- reactive({
+    two_sample_transformed_data() %>%
+      distinct(`__observation__`, .keep_all = TRUE) %>%
+      pull(`__difference__`)
   })
 
   # information message about the current data set and whether there are any
@@ -1913,7 +1999,8 @@ server <- function(input, output, session) {
     if (paired) {
       if (is_empty(numerical_variables)) {
         return("No numerical variables in current data set")
-      } else if (length(numerical_variables) < 2) {
+      }
+      if (length(numerical_variables) < 2) {
         return("Only one numerical variable in current data set")
       }
     } else {
@@ -1944,37 +2031,38 @@ server <- function(input, output, session) {
       }
     }
 
+    # values prior to any transformation
     data <- two_sample_data()
 
-    if (!is_empty(data)) {
-
+    if (nrow(data) > 0) {
       if (paired) {
         transform <- input$two_sample_paired_transformation
-        values <- two_sample_paired_differences()
+        values <- data %>%
+          distinct(`__observation__`, .keep_all = TRUE) %>%
+          pull(`__difference__`)
       } else {
         transform <- input$two_sample_transformation
         values <- pull(data, value)
       }
 
       # filter out missing values
-      values <- values[is.finite(values)]
+      values <- values[!is.na(values)]
 
       if (transform == "natural_log" && any(values < 0)) {
         return(
-          "Log transformation may not be suitable as there are negative values."
+          "Log transformation is not suitable as there are negative values."
         )
       }
       if (transform == "natural_log" && any(values == 0)) {
-        return(str_c(
-          "Log transformation may not be suitable as there are zero ",
-          "values."
-        ))
+        return(
+          "Log transformation is not suitable as there are zero values.",
+        )
       }
 
       if (transform == "square_root" && any(values < 0)) {
         return(str_c(
-          "Square root transformation may not be suitable as there are ",
-          "negative values."
+          "Square root transformation is not suitable as there are negative ",
+          "values."
         ))
       }
     }
@@ -1983,10 +2071,10 @@ server <- function(input, output, session) {
   # summary statistics table
   output$two_sample_summary_statistics <- DT::renderDataTable({
       data <- two_sample_transformed_data()
+
       if (nrow(data) == 0) {
         NULL
       } else {
-
         summary_statistics <- data %>%
           group_by(group) %>%
           summarize(summary_statistics(value)) %>%
@@ -2003,8 +2091,10 @@ server <- function(input, output, session) {
           )
 
         if (input$two_sample_paired) {
-          difference_statistics <-
-            summary_statistics(two_sample_transformed_diffs()) %>%
+          difference_statistics <- data %>%
+            distinct(observation, difference) %>%
+            pull(difference) %>%
+            summary_statistics() %>%
             pivot_longer(
               everything(),
               names_to = "statistic",
@@ -2038,14 +2128,6 @@ server <- function(input, output, session) {
   # boxplots and histograms
   output$two_sample_plots <- renderPlot({
     data <- two_sample_transformed_data()
-    if (is_empty(data)) {
-      return(NULL)
-    }
-
-    data <- filter(data, is.finite(value))
-    if (nrow(data) == 0) {
-      return(NULL)
-    }
 
     groups <- data$group
     values <- data$value
@@ -2080,38 +2162,29 @@ server <- function(input, output, session) {
       plot_layout(heights = c(1, 0.25, 1))
 
     if (input$two_sample_paired) {
+      differences <- two_sample_paired_differences()
 
-      differences <- two_sample_transformed_diffs()
-
-      # filter out missing values
-      differences <- differences[is.finite(differences)]
-
-      difference_boxplot <- plot_spacer()
-      difference_histogram <- plot_spacer()
-
-      if (!is_empty(differences)) {
-        number_of_bins <- NULL
-        if (input$two_sample_choose_number_of_bins) {
-          number_of_bins <- input$two_sample_number_of_bins
-        }
-
-        difference_histogram <- create_histogram(
-          differences,
-          name = "difference",
-          number_of_bins = number_of_bins,
-          show_normal_distribution = input$two_sample_show_normal_distribution
-        )
-
-        limits <- layer_scales(difference_histogram)$x$limits
-
-        difference_boxplot <- create_boxplot(
-          differences,
-          name = "difference",
-          limits = limits,
-          show_points = input$two_sample_show_points,
-          show_density = input$two_sample_violin
-        )
+      number_of_bins <- NULL
+      if (input$two_sample_choose_number_of_bins) {
+        number_of_bins <- input$two_sample_number_of_bins
       }
+
+      difference_histogram <- create_histogram(
+        differences,
+        name = "difference",
+        number_of_bins = number_of_bins,
+        show_normal_distribution = input$two_sample_show_normal_distribution
+      )
+
+      limits <- layer_scales(difference_histogram)$x$limits
+
+      difference_boxplot <- create_boxplot(
+        differences,
+        name = "difference",
+        limits = limits,
+        show_points = input$two_sample_show_points,
+        show_density = input$two_sample_violin
+      )
 
       plots <-
         boxplot + plot_spacer() + difference_boxplot +
@@ -2126,53 +2199,30 @@ server <- function(input, output, session) {
   # two sample Q-Q plot
   output$two_sample_qq_plot <- renderPlot({
     data <- two_sample_transformed_data()
-    if (is_empty(data)) {
-      return(NULL)
-    }
-
-    data <- filter(data, is.finite(value))
-    if (nrow(data) == 0) {
-      return(NULL)
-    }
-
-    groups <- data$group
-    values <- data$value
-
-    create_qq_plot(values, groups)
+    create_qq_plot(data$value, data$group)
   })
 
   # paired Q-Q plot
   output$paired_qq_plot <- renderPlot({
-    values <- two_sample_transformed_diffs()
-
-    # filter out missing values
-    values <- values[is.finite(values)]
-
-    if (is_empty(values)) {
-      return(NULL)
-    }
-
-    create_qq_plot(values)
+    create_qq_plot(two_sample_paired_differences())
   })
 
   # two sample Shapiro-Wilk test - first group
   output$two_sample_shapiro_wilk_test1 <- renderPrint({
     data <- two_sample_transformed_data()
 
-    if (is_empty(data)) {
-      cat(" ")
-    } else {
-      variable <- input$two_sample_group1
+    variable <- input$two_sample_group1
 
-      values <- data %>%
-        filter(group == variable) %>%
-        filter(is.finite(value)) %>%
-        pull(value)
+    tryCatch (
+      {
+        check_values(data$value)
 
-      if (length(values) < 3) {
-        cat("Too few observations in group 1 (", variable, ")", sep = "")
-      } else {
         cat("# Group 1: ", variable, "\n", sep = "")
+
+        values <- data %>%
+          filter(group == variable) %>%
+          pull(value)
+
         cat("shapiro.test(group1)\n")
 
         result <- shapiro.test(values)
@@ -2181,28 +2231,31 @@ server <- function(input, output, session) {
         result$data.name <- variable
 
         result
+      },
+      error = function(e) {
+        cat(e$message)
       }
-    }
+    )
   })
 
   # two sample Shapiro-Wilk test - second group
   output$two_sample_shapiro_wilk_test2 <- renderPrint({
     data <- two_sample_transformed_data()
 
-    if (is_empty(data)) {
-      cat(" ")
-    } else {
-      variable <- input$two_sample_group2
+    variable <- input$two_sample_group2
 
-      values <- data %>%
-        filter(group == variable) %>%
-        filter(is.finite(value)) %>%
-        pull(value)
+    tryCatch (
+      {
+        check_values(data$value)
 
-      if (length(values) < 3) {
-        cat("Too few observations in group 2 (", variable, ")", sep = "")
-      } else {
         cat("# Group 2: ", variable, "\n", sep = "")
+
+        values <- data %>%
+          filter(group == variable) %>%
+          pull(value)
+
+        check_values(values)
+
         cat("shapiro.test(group2)\n")
 
         result <- shapiro.test(values)
@@ -2211,193 +2264,167 @@ server <- function(input, output, session) {
         result$data.name <- variable
 
         result
+      },
+      error = function(e) {
+        cat(e$message)
       }
-    }
+    )
   })
 
   # two sample Shapiro-Wilk test for paired observation differences
   output$two_sample_paired_shapiro_wilk <- renderPrint({
-    values <- two_sample_transformed_diffs()
+    values <- two_sample_paired_differences()
 
-    if (is_empty(values)) {
-      cat(" ")
-    } else {
-      # filter out missing values
-      values <- values[is.finite(values)]
+    variable <- input$one_sample_variable
 
-      if (is_empty(values)) {
-        cat("No observations")
-      } else if (length(values) < 3) {
-        cat("Too few observations")
-      } else {
+    tryCatch (
+      {
+        check_values(values)
+
         cat("shapiro.test(differences)\n")
 
         result <- shapiro.test(values)
 
         # override the data name
-        result$data.name <- "differences"
+        result$data.name <- variable
 
         result
+      },
+      error = function(e) {
+        cat(e$message)
       }
-    }
+    )
   })
 
   # F-test to compare variances of two samples
   output$two_sample_variance_test <- renderPrint({
     data <- two_sample_transformed_data()
 
-    if (is_empty(data)) {
-      cat(" ")
-    } else {
-      variable1 <- input$two_sample_group1
-      variable2 <- input$two_sample_group2
+    variable1 <- input$two_sample_group1
+    variable2 <- input$two_sample_group2
 
-      values1 <- data %>%
-        filter(group == variable1) %>%
-        filter(is.finite(value)) %>%
-        pull(value)
+    values1 <- data %>%
+      filter(group == variable1) %>%
+      pull(value)
 
-      values2 <- data %>%
-        filter(group == variable2) %>%
-        filter(is.finite(value)) %>%
-        pull(value)
+    values2 <- data %>%
+      filter(group == variable2) %>%
+      pull(value)
 
-      if (length(values1) < 3) {
-        if (length(values2) < 3) {
-          cat("Two few observations")
-        } else {
-          cat("Two few observations in group 1")
-        }
-      } else if (length(values2) < 3) {
-          cat("Two few observations in group 2")
-      } else {
+    tryCatch(
+      {
+        check_values(values1, "(group 1)")
+        check_values(values2, "(group 2)")
+
         cat("var.test(group1, group2)\n")
+
         var.test(values1, values2)
+      },
+      error = function(e) {
+        cat(e$message)
       }
-    }
+    )
   })
 
   # two sample t-test
-  two_sample_t_test <- reactive({
+  output$two_sample_t_test <- renderPrint({
     data <- two_sample_transformed_data()
-
-    if (is_empty(data)) {
-      return(NULL)
-    }
 
     variable1 <- input$two_sample_group1
     variable2 <- input$two_sample_group2
 
     values1 <- data %>%
       filter(group == variable1) %>%
-      filter(is.finite(value)) %>%
       pull(value)
 
     values2 <- data %>%
       filter(group == variable2) %>%
-      filter(is.finite(value)) %>%
       pull(value)
 
-    if (length(values1) < 3 || length(values2) < 3) {
-      return(NULL)
-    }
+    alternative <- input$two_sample_alternative
+    equal_variance <- input$two_sample_equal_variance
 
-    result <- t.test(
-      values1, values2,
-      alternative = input$two_sample_alternative,
-      var.equal = input$two_sample_equal_variance
-    )
+    tryCatch(
+      {
+        result <- two_sample_t_test(
+          values1,
+          values2,
+          alternative = alternative,
+          equal_variance = equal_variance,
+          paired = FALSE,
+          variable1 = variable1,
+          variable2 = variable2
+        )
 
-    # override the data name
-    result$data.name <- str_c(variable1, " and ", variable2)
-
-    result
-  })
-
-  output$two_sample_t_test <- renderPrint({
-    data <- two_sample_transformed_data()
-
-    if (is_empty(data)) {
-      cat(" ")
-    } else {
-      variable1 <- input$two_sample_group1
-      variable2 <- input$two_sample_group2
-
-      values1 <- data %>%
-        filter(group == variable1) %>%
-        filter(is.finite(value)) %>%
-        pull(value)
-
-      values2 <- data %>%
-        filter(group == variable2) %>%
-        filter(is.finite(value)) %>%
-        pull(value)
-
-      if (length(values1) < 3) {
-        if (length(values2) < 3) {
-          cat("Too few observations in both groups")
-        } else {
-          cat("Too few observations in group 1 (", variable1, ")", sep = "")
-        }
-      } else if (length(values2) < 3) {
-        cat("Too few observations in group 2 (", variable2, ")", sep = "")
-      } else {
         cat(
           "t.test(group1, group2, ",
-          "alternative = \"", input$two_sample_alternative, "\", ",
-          "var.equal = ", input$two_sample_equal_variance, ")\n",
+          "alternative = \"", alternative, "\", ",
+          "var.equal = ", equal_variance, ")\n",
           sep = ""
         )
 
-        result <- two_sample_t_test()
-        if (!is.null(result)) {
-          result
-        }
+        result
+      },
+      error = function(e) {
+        cat(e$message)
       }
-    }
+    )
   })
 
   output$two_sample_t_plot <- renderPlot({
-      result <- two_sample_t_test()
-      if (!is.null(result)) {
+    data <- two_sample_transformed_data()
+
+    variable1 <- input$two_sample_group1
+    variable2 <- input$two_sample_group2
+
+    values1 <- data %>%
+      filter(group == variable1) %>%
+      pull(value)
+
+    values2 <- data %>%
+      filter(group == variable2) %>%
+      pull(value)
+
+    alternative <- input$two_sample_alternative
+    equal_variance <- input$two_sample_equal_variance
+
+    tryCatch(
+      {
+        result <- two_sample_t_test(
+          values1,
+          values2,
+          alternative = alternative,
+          equal_variance = equal_variance,
+          paired = FALSE,
+          variable1 = variable1,
+          variable2 = variable2
+        )
+
         create_t_distribution_plot(result)
-      }
+      },
+      error = function(e) {}
+    )
   })
 
   # two sample Wilcoxon rank sum test
   output$two_sample_wilcoxon_test <- renderPrint({
     data <- two_sample_transformed_data()
 
-    if (is_empty(data)) {
-      cat(" ")
-    } else {
-      variable1 <- input$two_sample_group1
-      variable2 <- input$two_sample_group2
+    variable1 <- input$two_sample_group1
+    variable2 <- input$two_sample_group2
 
-      values1 <- data %>%
-        filter(group == variable1) %>%
-        filter(is.finite(value)) %>%
-        pull(value)
+    values1 <- data %>%
+      filter(group == variable1) %>%
+      pull(value)
 
-      values2 <- data %>%
-        filter(group == variable2) %>%
-        filter(is.finite(value)) %>%
-        pull(value)
+    values2 <- data %>%
+      filter(group == variable2) %>%
+      pull(value)
 
-      if (length(values1) < 3) {
-        if (length(values2) < 3) {
-          cat("Too few observations in both groups")
-        } else {
-          cat("Too few observations in group 1 (", variable1, ")", sep = "")
-        }
-      } else if (length(values2) < 3) {
-        cat("Too few observations in group 2 (", variable2, ")", sep = "")
-      } else {
-        cat(
-          "wilcox.test(group1, group2, ",
-          "alternative = \"", input$two_sample_alternative, "\")\n",
-          sep = ""
-        )
+    tryCatch(
+      {
+        check_values(values1, "(group 1)")
+        check_values(values1, "(group 2)")
 
         result <- wilcox.test(
           values1,
@@ -2408,137 +2435,239 @@ server <- function(input, output, session) {
         # override the data name
         result$data.name <- str_c(variable1, " and ", variable2)
 
-        result
-      }
-    }
-  })
-
-  # paired t-test
-  paired_t_test <- reactive({
-    data <- two_sample_transformed_paired_data()
-
-    if (is_empty(data)) {
-      return(NULL)
-    }
-
-    differences <- two_sample_transformed_diffs()
-
-    # filter out missing or non-finite values
-    differences <- differences[is.finite(differences)]
-
-    if (length(differences) < 3) {
-      return(NULL)
-    }
-
-    # filter out missing values
-    data <- filter(data, if_all(everything(), is.finite))
-
-    variable1 <- input$two_sample_variable1
-    variable2 <- input$two_sample_variable2
-
-    values1 <- pull(data, variable1)
-    values2 <- pull(data, variable2)
-
-    result <- t.test(
-      values1, values2,
-      alternative = input$two_sample_alternative,
-      paired = TRUE
-    )
-
-    # override the data name
-    result$data.name <- str_c(variable1, " and ", variable2)
-
-    result
-  })
-
-  output$paired_t_test <- renderPrint({
-    data <- two_sample_transformed_paired_data()
-
-    if (is_empty(data)) {
-      cat(" ")
-    } else {
-      differences <- two_sample_transformed_diffs()
-
-      # filter out missing values
-      data <- filter(data, if_all(everything(), is.finite))
-      differences <- differences[is.finite(differences)]
-
-      if (is_empty(differences)) {
-        cat("No observations")
-      } else if (length(differences) < 3) {
-        cat("Too few observations")
-      } else {
-        variable1 <- input$two_sample_variable1
-        variable2 <- input$two_sample_variable2
-
-        values1 <- pull(data, variable1)
-        values2 <- pull(data, variable2)
-
         cat(
-          "t.test(variable1, variable1, ",
-          "alternative = \"", input$two_sample_alternative, "\", ",
-          "paired = TRUE)\n",
+          "wilcox.test(group1, group2, ",
+          "alternative = \"", alternative, "\")\n",
           sep = ""
         )
 
-        result <- paired_t_test()
-        if (!is.null(result)) {
-          result
-        }
+        result
+      },
+      error = function(e) {
+        cat(e$message)
       }
+    )
+  })
+
+  # paired t-test
+  output$paired_t_test <- renderPrint({
+    transformation <- input$two_sample_paired_transformation
+    alternative <- input$two_sample_alternative
+
+    if (transformation == "none") {
+      # use paired values
+      data <- two_sample_data()
+
+      variable1 <- input$two_sample_variable1
+      variable2 <- input$two_sample_variable2
+
+      values1 <- data %>%
+        filter(group == variable1) %>%
+        arrange(`__observation__`) %>%
+        pull(value)
+
+      values2 <- data %>%
+        filter(group == variable2) %>%
+        arrange(`__observation__`) %>%
+        pull(value)
+
+      tryCatch(
+        {
+          check_values(values1, "(group 1)")
+          check_values(values1, "(group 2)")
+
+          result <- two_sample_t_test(
+            values1,
+            values2,
+            alternative = alternative,
+            paired = TRUE,
+            variable1 = variable1,
+            variable2 = variable2
+          )
+
+          cat(
+            "t.test(variable1, variable2, ",
+            "alternative = \"", alternative, "\", ",
+            "paired = TRUE)\n",
+            sep = ""
+          )
+
+          result
+        },
+        error = function(e) {
+          cat(e$message)
+        }
+      )
+    } else {
+      # use one-sample test for differences and zero mean since the differences
+      # have been transformed not the paired values
+      differences <- two_sample_paired_differences()
+
+      tryCatch(
+        {
+          check_values(differences)
+
+          result <- one_sample_t_test(
+            values,
+            hypothesized_mean = 0,
+            alternative = alternative,
+            variable = variable
+          )
+
+          cat(
+            "t.test(differences, mu = ", result$null.value, ", ",
+            "alternative = \"", result$alternative, "\")\n",
+            sep = ""
+          )
+
+          result
+        },
+        error = function(e) {
+          cat(e$message)
+        }
+      )
     }
   })
 
   output$paired_t_plot <- renderPlot({
-      result <- paired_t_test()
-      if (!is.null(result)) {
-        create_t_distribution_plot(result)
-      }
+    transformation <- input$two_sample_paired_transformation
+    alternative <- input$two_sample_alternative
+
+    if (transformation == "none") {
+      # use paired values
+      data <- two_sample_data()
+
+      variable1 <- input$two_sample_variable1
+      variable2 <- input$two_sample_variable2
+
+      values1 <- data %>%
+        filter(group == variable1) %>%
+        arrange(`__observation__`) %>%
+        pull(value)
+
+      values2 <- data %>%
+        filter(group == variable2) %>%
+        arrange(`__observation__`) %>%
+        pull(value)
+
+      tryCatch(
+        {
+          check_values(values1, "(group 1)")
+          check_values(values1, "(group 2)")
+
+          result <- two_sample_t_test(
+            values1,
+            values2,
+            alternative = alternative,
+            paired = TRUE,
+            variable1 = variable1,
+            variable2 = variable2
+          )
+
+          create_t_distribution_plot(result)
+        },
+        error = function(e) {}
+      )
+    } else {
+      # use one-sample test for differences and zero mean since the differences
+      # have been transformed not the paired values
+      differences <- two_sample_paired_differences()
+
+      tryCatch(
+        {
+          check_values(differences)
+
+          result <- one_sample_t_test(
+            values,
+            hypothesized_mean = 0,
+            alternative = alternative,
+            variable = variable
+          )
+
+          create_t_distribution_plot(result)
+        },
+        error = function(e) {}
+      )
+    }
   })
 
   # paired Wilcoxon signed rank test
   output$paired_wilcoxon_test <- renderPrint({
-    data <- two_sample_transformed_paired_data()
+    transformation <- input$two_sample_paired_transformation
+    alternative <- input$two_sample_alternative
 
-    if (is_empty(data)) {
-      cat(" ")
+    if (transformation == "none") {
+      # use paired values
+      data <- two_sample_data()
+
+      variable1 <- input$two_sample_variable1
+      variable2 <- input$two_sample_variable2
+
+      values1 <- data %>%
+        filter(group == variable1) %>%
+        arrange(`__observation__`) %>%
+        pull(value)
+
+      values2 <- data %>%
+        filter(group == variable2) %>%
+        arrange(`__observation__`) %>%
+        pull(value)
+
+      tryCatch(
+        {
+          check_values(values1, "(group 1)")
+          check_values(values1, "(group 2)")
+
+          result <- two_sample_wilcoxon_test(
+            values1,
+            values2,
+            alternative = alternative,
+            paired = TRUE,
+            variable1 = variable1,
+            variable2 = variable2
+          )
+
+          cat(
+            "wilcox.test(variable1, variable2, ",
+            "alternative = \"", alternative, "\", ",
+            "paired = TRUE)\n",
+            sep = ""
+          )
+
+          result
+        },
+        error = function(e) {
+          cat(e$message)
+        }
+      )
     } else {
-      differences <- two_sample_transformed_diffs()
+      # use one-sample test for differences and zero mean since the differences
+      # have been transformed not the paired values
+      differences <- two_sample_paired_differences()
 
-      # filter out missing values
-      differences <- differences[is.finite(differences)]
-      data <- filter(data, if_all(everything(), is.finite))
+      tryCatch(
+        {
+          check_values(differences)
 
-      if (is_empty(differences)) {
-        cat("No observations")
-      } else if (length(differences) < 3) {
-        cat("Too few observations")
-      } else {
-        variable1 <- input$two_sample_variable1
-        variable2 <- input$two_sample_variable2
+          result <- one_sample_wilcoxon_test(
+            values,
+            0,
+            alternative = alternative,
+            variable = variable
+          )
 
-        values1 <- pull(data, variable1)
-        values2 <- pull(data, variable2)
+          cat(
+            "wilcox.test(differences, mu = ", result$null.value, ", ",
+            "alternative = \"", result$alternative, "\")\n",
+            sep = ""
+          )
 
-        cat(
-          "wilcox.test(variable1, variable2, ",
-          "alternative = \"", input$two_sample_alternative, "\", ",
-          "paired = TRUE)\n",
-          sep = ""
-        )
-
-        result <- wilcox.test(
-          values1,
-          values2,
-          alternative = input$two_sample_alternative,
-          paired = TRUE
-        )
-
-        # override the data name
-        result$data.name <- str_c(variable1, " and ", variable2)
-
-        result
-      }
+          result
+        },
+        error = function(e) {
+          cat(e$message)
+        }
+      )
     }
   })
 
