@@ -696,24 +696,21 @@ The actual number of bins may differ for aesthetic reasons.
         tabPanel(
           "Assumptions",
           br(),
-          fluidRow(
-            column(
-              width = 8,
-              wellPanel(
-                "The following assumptions need to hold for a parametric,",
-                "one sample t-test:",
-                p(),
-                tags$ul(
-                  tags$li(
-                    "independent - values are not related to one another"
-                  ),
-                  tags$li(
-                    "the data are on a continuous scale"
-                  ),
-                  tags$li(
-                    "the data are a random sample from a population that is",
-                    "normally distributed"
-                  )
+          sidebarLayout(
+            sidebarPanel(
+              "The following assumptions need to hold for a parametric,",
+              "one sample t-test:",
+              p(),
+              tags$ul(
+                tags$li(
+                  "independent - values are not related to one another"
+                ),
+                tags$li(
+                  "the data are on a continuous scale"
+                ),
+                tags$li(
+                  "the data are a random sample from a population that is",
+                  "normally distributed"
                 )
               ),
               helpText("
@@ -722,23 +719,15 @@ the assumptions of a parametric test, e.g. t-test. Use of preliminary tests of
 assumptions such as normality or equal variance between groups are controversial
 and often criticised within the statistics community.
               ")
-            )
-          ),
-          tabsetPanel(
-            tabPanel(
-              "Q-Q plot",
-              fluidRow(
-                column(
-                  width = 5,
-                  plotOutput("one_sample_qq_plot", height = "400px")
-                )
-              )
             ),
-            tabPanel(
-              "Shapiro-Wilk test",
-              fluidRow(
-                column(
-                  width = 8,
+            mainPanel(
+              tabsetPanel(
+                tabPanel(
+                  "Q-Q plot",
+                  plotOutput("one_sample_qq_plot", height = "400px", width = "55%")
+                ),
+                tabPanel(
+                  "Shapiro-Wilk test",
                   h4("Shapiro-Wilk test of normality"),
                   helpText("
 The Shapiro-Wilk test of normality is a test for the null hypothesis that the
@@ -981,46 +970,43 @@ The actual number of bins may differ for aesthetic reasons.
         tabPanel(
           "Assumptions",
           br(),
-          fluidRow(
-            column(
-              width = 8,
-              wellPanel(
-                conditionalPanel(
-                  condition = "!input.two_sample_paired",
-                  "The following assumptions need to hold for a parametric,",
-                  "two sample t-test:",
-                  p(),
-                  tags$ul(
-                    tags$li(
-                      "independent - observations in one sample (or group) are",
-                      "independent of observations in the other sample"
-                    ),
-                    tags$li(
-                      "the data are on a continuous scale"
-                    ),
-                    tags$li(
-                      "the data are a random sample from a population for each",
-                      "group that is normally distributed"
-                    )
+          sidebarLayout(
+            sidebarPanel(
+              conditionalPanel(
+                condition = "!input.two_sample_paired",
+                "The following assumptions need to hold for a parametric,",
+                "two sample t-test:",
+                p(),
+                tags$ul(
+                  tags$li(
+                    "independent - observations in one sample (or group) are",
+                    "independent of observations in the other sample"
+                  ),
+                  tags$li(
+                    "the data are on a continuous scale"
+                  ),
+                  tags$li(
+                    "the data are a random sample from a population for each",
+                    "group that is normally distributed"
                   )
-                ),
-                conditionalPanel(
-                  condition = "input.two_sample_paired",
-                  "The following assumptions need to hold for a paired t-test",
-                  "of the differences between paired measurements:",
-                  p(),
-                  tags$ul(
-                    tags$li(
-                      "independent - measurements for one observation do not",
-                      "affect measurements for any other subject"
-                    ),
-                    tags$li(
-                      "each of the paired measurements must be obtained from",
-                      "same subject"
-                    ),
-                    tags$li(
-                      "the measured differences are normally distributed"
-                    )
+                )
+              ),
+              conditionalPanel(
+                condition = "input.two_sample_paired",
+                "The following assumptions need to hold for a paired t-test",
+                "of the differences between paired measurements:",
+                p(),
+                tags$ul(
+                  tags$li(
+                    "independent - measurements for one observation do not",
+                    "affect measurements for any other subject"
+                  ),
+                  tags$li(
+                    "each of the paired measurements must be obtained from",
+                    "same subject"
+                  ),
+                  tags$li(
+                    "the measured differences are normally distributed"
                   )
                 )
               ),
@@ -1030,46 +1016,33 @@ the assumptions of a parametric test, e.g. t-test. Use of preliminary tests of
 assumptions such as normality or equal variance between groups are controversial
 and often criticised within the statistics community.
               ")
-            )
-          ),
-          conditionalPanel(
-            condition = "!input.two_sample_paired",
-            tabsetPanel(
-              tabPanel(
-                "Q-Q plot",
-                fluidRow(
-                  column(
-                    width = 8,
+            ),
+            mainPanel(
+              conditionalPanel(
+                condition = "!input.two_sample_paired",
+                tabsetPanel(
+                  tabPanel(
+                    "Q-Q plot",
                     plotOutput("two_sample_qq_plot", height = "400px")
-                  )
-                )
-              ),
-              tabPanel(
-                "Shapiro-Wilk test",
-                fluidRow(
-                  column(
-                    width = 8,
+                  ),
+                  tabPanel(
+                    "Shapiro-Wilk test",
                     h4("Shapiro-Wilk test of normality"),
                     helpText("
 The Shapiro-Wilk test of normality is a test for the null hypothesis that the
 data come from a normally distributed population. The test is run for each of
 the two groups separately.
-                    ")
-                  )
-                ),
-                fluidRow(
-                  column(
-                    width = 5,
-                    verbatimTextOutput("two_sample_shapiro_wilk_test1")
-                  ),
-                  column(
-                    width = 5,
-                    verbatimTextOutput("two_sample_shapiro_wilk_test2")
-                  )
-                ),
-                fluidRow(
-                  column(
-                    width = 8,
+                    "),
+                    fluidRow(
+                      column(
+                        width = 6,
+                        verbatimTextOutput("two_sample_shapiro_wilk_test1")
+                      ),
+                      column(
+                        width = 6,
+                        verbatimTextOutput("two_sample_shapiro_wilk_test2")
+                      )
+                    ),
                     helpText("
 The null hypothesis can be rejected if the p-value is less than 0.05, suggesting
 that the data come from a population that does not follow a normal distribution.
@@ -1086,14 +1059,9 @@ a parametric or non-parametric test should subsequently be used, particularly
 when the sample size is small. It is often better to make your own assessment by
 looking at box plots, density plots and histograms.
                     ")
-                  )
-                )
-              ),
-              tabPanel(
-                "F-test",
-                fluidRow(
-                  column(
-                    width = 8,
+                  ),
+                  tabPanel(
+                    "F-test",
                     h4("F test to compare two variances"),
                     helpText("
 The F-test of equality of variances is a test for the null hypothesis that two
@@ -1114,27 +1082,17 @@ differences in variance between the two groups by inspecting the box and density
 plots.
                     ")
                   )
-                ),
-              )
-            )
-          ),
-          conditionalPanel(
-            condition = "input.two_sample_paired",
-            tabsetPanel(
-              tabPanel(
-                "Q-Q plot",
-                fluidRow(
-                  column(
-                    width = 5,
-                    plotOutput("paired_qq_plot", height = "400px")
-                  )
                 )
               ),
-              tabPanel(
-                "Shapiro-Wilk test",
-                fluidRow(
-                  column(
-                    width = 8,
+              conditionalPanel(
+                condition = "input.two_sample_paired",
+                tabsetPanel(
+                  tabPanel(
+                    "Q-Q plot",
+                    plotOutput("paired_qq_plot", height = "400px", width = "55%")
+                  ),
+                  tabPanel(
+                    "Shapiro-Wilk test",
                     h4("Shapiro-Wilk test of normality"),
                     helpText("
 The Shapiro-Wilk test of normality is a test for the null hypothesis that the
