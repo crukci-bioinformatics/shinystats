@@ -2478,10 +2478,10 @@ server <- function(input, output, session) {
           check_values(differences)
 
           result <- one_sample_t_test(
-            values,
+            differences,
             hypothesized_mean = 0,
             alternative = alternative,
-            variable = variable
+            variable = "differences"
           )
 
           cat(
@@ -2548,10 +2548,10 @@ server <- function(input, output, session) {
           check_values(differences)
 
           result <- one_sample_t_test(
-            values,
+            differences,
             hypothesized_mean = 0,
             alternative = alternative,
-            variable = variable
+            variable = "differences"
           )
 
           create_t_distribution_plot(result)
@@ -2620,10 +2620,10 @@ server <- function(input, output, session) {
           check_values(differences)
 
           result <- one_sample_wilcoxon_test(
-            values,
+            differences,
             0,
             alternative = alternative,
-            variable = variable
+            variable = "differences"
           )
 
           cat(
