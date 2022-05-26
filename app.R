@@ -88,8 +88,8 @@ datasets <- list(
 summary_statistics <- function(values) {
   as_tibble(list(
     `Number of observations` = length(values),
-    `Missing values` = sum(is.na(values)),
-    `Finite values` = sum(is.finite(values)),
+    # `Missing values` = sum(is.na(values)),
+    `Valid/non-missing observations` = sum(is.finite(values)),
     Mean = mean(values, na.rm = TRUE),
     `Standard deviation` = sd(values, na.rm = TRUE),
     `Confidence interval (C.I.) lower` =
@@ -670,7 +670,7 @@ deviation of the data.
               conditionalPanel(
                 condition = "!input.one_sample_choose_number_of_bins",
                 helpText("
-An optimal number of bins is chosen based on the data.
+If not selected, an optimal number of bins is chosen based on the data.
                 ")
               ),
               conditionalPanel(
@@ -698,12 +698,17 @@ The actual number of bins may differ for aesthetic reasons.
           br(),
           sidebarLayout(
             sidebarPanel(
-              "The following assumptions need to hold for a parametric,",
-              "one sample t-test:",
+              helpText("
+This page provides graphical and statistical tools that can help with assessing
+the assumptions of a parametric test, e.g. t-test.
+              "),
+              "The following assumptions are made in a parametric, one sample",
+              "t-test:",
               p(),
               tags$ul(
                 tags$li(
-                  "independent - values are not related to one another"
+                  "the data are independent - values are not related to one",
+                  "another"
                 ),
                 tags$li(
                   "the data are on a continuous scale"
@@ -714,10 +719,13 @@ The actual number of bins may differ for aesthetic reasons.
                 )
               ),
               helpText("
-This page provides graphical and statistical tools that can help with assessing
-the assumptions of a parametric test, e.g. t-test. Use of preliminary tests of
-assumptions such as normality or equal variance between groups are controversial
-and often criticised within the statistics community.
+Preliminary statistical tests of assumptions such as normality or equal variance
+between groups are controversial and often criticised within the statistics
+community.
+              "),
+              helpText("
+Applying a transformation, e.g. log, square root or cube root, can help to
+make skewed data conform more closely to normality.
               ")
             ),
             mainPanel(
@@ -728,36 +736,35 @@ and often criticised within the statistics community.
 The Q-Q (quantile-quantile) plot compares the data with a normal distribution by
 plotting their quantiles against each other.
                   "),
-                  plotOutput("one_sample_qq_plot", height = "400px", width = "55%"),
+                  plotOutput("one_sample_qq_plot", height = "400px", width = "66%"),
                   helpText("
 The theoretical quantiles are for a standard normal distribution with mean 0 and
 standard deviation 1.
                   "),
                   helpText("
-The diagonal line connects the first and third quartiles. The points will lie
-approximately along the line if the data are normally distributed.
+The points will lie approximately along the diagonal line (fitted through the
+points for the first and third quartiles) if the data are normally distributed.
                   "),
                   helpText("
-Significant deviations from the line may indicate that the data are not from a
-population with a normal distribution and suggests that a non-parametric test
-should be used.
+Significant deviations from the line may suggest the use of a non-parametric
+test.
                   ")
                 ),
                 tabPanel(
                   "Shapiro-Wilk test",
                   h4("Shapiro-Wilk test of normality"),
                   helpText("
-The Shapiro-Wilk test of normality is a test for the null hypothesis that the
-data come from a normally distributed population.
+The Shapiro-Wilk test tests the null hypothesis that the data come from a
+normally distributed population.
                   "),
                   verbatimTextOutput("one_sample_shapiro_wilk_test"),
                   helpText("
 The null hypothesis can be rejected if the p-value is less than 0.05, suggesting
-that the data come from a population that does not follow a normal distribution.
+that the data come from a population that are not normally distributed.
                   "),
                   helpText("
 If the null hypothesis can't be rejected, this means there is insufficient
-evidence that the data are not normal. This is not the same as accepting tha
+evidence that the data are not normal. This is not the same as accepting that
 the data come from a normal distribution, i.e. it does not prove that the null
 hypothesis is true.
                   "),
@@ -765,7 +772,7 @@ hypothesis is true.
 Caution is advised when using a preliminary test for normality to decide whether
 a parametric or non-parametric test should subsequently be used, particularly
 when the sample size is small. It is often better to make your own assessment by
-looking at box plots, density plots and histograms.
+looking at box plots, density plots, histograms and Q-Q plots.
                   ")
                 )
               )
@@ -961,7 +968,7 @@ deviation of each group.
               conditionalPanel(
                 condition = "!input.two_sample_choose_number_of_bins",
                 helpText("
-An optimal number of bins is chosen based on the data.
+If not selected, an optimal number of bins is chosen based on the data.
                 ")
               ),
               conditionalPanel(
@@ -989,15 +996,19 @@ The actual number of bins may differ for aesthetic reasons.
           br(),
           sidebarLayout(
             sidebarPanel(
+              helpText("
+This page provides graphical and statistical tools that can help with assessing
+the assumptions of a parametric test, e.g. t-test.
+              "),
               conditionalPanel(
                 condition = "!input.two_sample_paired",
-                "The following assumptions need to hold for a parametric,",
-                "two sample t-test:",
+                "The following assumptions are made in a parametric, two",
+                "sample t-test:",
                 p(),
                 tags$ul(
                   tags$li(
-                    "independent - observations in one sample (or group) are",
-                    "independent of observations in the other sample"
+                    "the data are independent - observations in one sample (or",
+                    "group) are independent of observations in the other sample"
                   ),
                   tags$li(
                     "the data are on a continuous scale"
@@ -1010,17 +1021,18 @@ The actual number of bins may differ for aesthetic reasons.
               ),
               conditionalPanel(
                 condition = "input.two_sample_paired",
-                "The following assumptions need to hold for a paired t-test",
-                "of the differences between paired measurements:",
+                "The following assumptions are made in a parametric, paired",
+                "t-test of the differences between paired measurements:",
                 p(),
                 tags$ul(
                   tags$li(
-                    "independent - measurements for one observation do not",
-                    "affect measurements for any other subject"
+                    "the data are independent - measurements for one",
+                    "observation do not affect measurements for any other",
+                    "subject"
                   ),
                   tags$li(
                     "each of the paired measurements must be obtained from",
-                    "same subject"
+                    "the same subject"
                   ),
                   tags$li(
                     "the measured differences are normally distributed"
@@ -1028,10 +1040,13 @@ The actual number of bins may differ for aesthetic reasons.
                 )
               ),
               helpText("
-This page provides graphical and statistical tools that can help with assessing
-the assumptions of a parametric test, e.g. t-test. Use of preliminary tests of
-assumptions such as normality or equal variance between groups are controversial
-and often criticised within the statistics community.
+Preliminary statistical tests of assumptions such as normality or equal variance
+between groups are controversial and often criticised within the statistics
+community.
+              "),
+              helpText("
+Applying a transformation, e.g. log, square root or cube root, can help to
+make skewed data conform more closely to normality.
               ")
             ),
             mainPanel(
@@ -1050,22 +1065,21 @@ The theoretical quantiles are for a standard normal distribution with mean 0 and
 standard deviation 1.
                     "),
                     helpText("
-The diagonal line connects the first and third quartiles. The points will lie
-approximately along the line if the data are normally distributed.
+The points will lie approximately along the diagonal line (fitted through the
+points for the first and third quartiles) if the data are normally distributed.
                     "),
                     helpText("
-Significant deviations from the line may indicate that the data are not from a
-population with a normal distribution and suggests that a non-parametric test
-should be used.
+Significant deviations from the line may suggest the use of a non-parametric
+test.
                     ")
                   ),
                   tabPanel(
                     "Shapiro-Wilk test",
                     h4("Shapiro-Wilk test of normality"),
                     helpText("
-The Shapiro-Wilk test of normality is a test for the null hypothesis that the
-data come from a normally distributed population. The test is run for each of
-the two groups separately.
+The Shapiro-Wilk test tests the null hypothesis that the data come from a
+normally distributed population.
+The test is run for each of the two groups separately.
                     "),
                     fluidRow(
                       column(
@@ -1079,11 +1093,11 @@ the two groups separately.
                     ),
                     helpText("
 The null hypothesis can be rejected if the p-value is less than 0.05, suggesting
-that the data come from a population that does not follow a normal distribution.
+that the data come from a population that are not normally distributed.
                     "),
                     helpText("
 If the null hypothesis can't be rejected, this means there is insufficient
-evidence that the data are not normal. This is not the same as accepting tha
+evidence that the data are not normal. This is not the same as accepting that
 the data come from a normal distribution, i.e. it does not prove that the null
 hypothesis is true.
                     "),
@@ -1091,12 +1105,12 @@ hypothesis is true.
 Caution is advised when using a preliminary test for normality to decide whether
 a parametric or non-parametric test should subsequently be used, particularly
 when the sample size is small. It is often better to make your own assessment by
-looking at box plots, density plots and histograms.
+looking at box plots, density plots, histograms and Q-Q plots.
                     ")
                   ),
                   tabPanel(
                     "F-test",
-                    h4("F test to compare two variances"),
+                    h4("F-test to compare two variances"),
                     helpText("
 The F-test of equality of variances is a test for the null hypothesis that two
 normal populations have the same variance.
@@ -1128,37 +1142,37 @@ The Q-Q (quantile-quantile) plot compares the data with a normal distribution by
 plotting their quantiles against each other. In the paired two sample case,
 quantiles for the differences between pairs of measurements are used.
                     "),
-                    plotOutput("paired_qq_plot", height = "400px", width = "55%"),
+                    plotOutput("paired_qq_plot", height = "400px", width = "66%"),
                     helpText("
 The theoretical quantiles are for a standard normal distribution with mean 0 and
 standard deviation 1.
                     "),
                     helpText("
-The diagonal line connects the first and third quartiles. The points will lie
-approximately along the line if the data are normally distributed.
+The points will lie approximately along the diagonal line (fitted through the
+points for the first and third quartiles) if the data are normally distributed.
                     "),
                     helpText("
-Significant deviations from the line may indicate that the data are not from a
-population with a normal distribution and suggests that a non-parametric test
-should be used.
+Significant deviations from the line may suggest the use of a non-parametric
+test.
                     ")
                   ),
                   tabPanel(
                     "Shapiro-Wilk test",
                     h4("Shapiro-Wilk test of normality"),
                     helpText("
-The Shapiro-Wilk test of normality is a test for the null hypothesis that the
-data come from a normally distributed population. In the paired two sample case,
-the test is run on the differences between pairs of measurements.
+The Shapiro-Wilk test tests the null hypothesis that the data come from a
+normally distributed population.
+In the paired two sample case, the test is run on the differences between pairs
+of measurements.
                     "),
                     verbatimTextOutput("two_sample_paired_shapiro_wilk"),
                     helpText("
 The null hypothesis can be rejected if the p-value is less than 0.05, suggesting
-that the data come from a population that does not follow a normal distribution.
+that the data come from a population that are not normally distributed.
                     "),
                     helpText("
 If the null hypothesis can't be rejected, this means there is insufficient
-evidence that the data are not normal. This is not the same as accepting tha
+evidence that the data are not normal. This is not the same as accepting that
 the data come from a normal distribution, i.e. it does not prove that the null
 hypothesis is true.
                     "),
@@ -1166,7 +1180,7 @@ hypothesis is true.
 Caution is advised when using a preliminary test for normality to decide whether
 a parametric or non-parametric test should subsequently be used, particularly
 when the sample size is small. It is often better to make your own assessment by
-looking at box plots, density plots and histograms.
+looking at box plots, density plots, histograms and Q-Q plots.
                     ")
                   )
                 )
