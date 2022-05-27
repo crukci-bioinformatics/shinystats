@@ -92,10 +92,10 @@ summary_statistics <- function(values) {
     `Valid/non-missing observations` = sum(is.finite(values)),
     Mean = mean(values, na.rm = TRUE),
     `Standard deviation` = sd(values, na.rm = TRUE),
-    `Confidence interval (C.I.) lower` =
-      mean(values, na.rm = TRUE) - 1.96 * sd(values, na.rm = TRUE) / sqrt(length(values)),
-    `Confidence interval (C.I.) upper` =
-      mean(values, na.rm = TRUE) + 1.96 * sd(values, na.rm = TRUE) / sqrt(length(values)),
+    `Confidence interval (C.I.) lower` = mean(values, na.rm = TRUE)
+      - 1.96 * sd(values, na.rm = TRUE) / sqrt(length(values)),
+    `Confidence interval (C.I.) upper` = mean(values, na.rm = TRUE)
+      + 1.96 * sd(values, na.rm = TRUE) / sqrt(length(values)),
     Minimum = min(values, na.rm = TRUE),
     `25th percentile (1st quartile)` = quantile(values, 0.25, na.rm = TRUE),
     Median = median(values, na.rm = TRUE),
@@ -733,7 +733,11 @@ make skewed data conform more closely to normality.
 The Q-Q (quantile-quantile) plot compares the data with a normal distribution by
 plotting their quantiles against each other.
                   "),
-                  plotOutput("one_sample_qq_plot", height = "400px", width = "66%"),
+                  plotOutput(
+                    "one_sample_qq_plot",
+                    height = "400px",
+                    width = "66%"
+                  ),
                   helpText("
 The theoretical quantiles are for a standard normal distribution with mean 0 and
 standard deviation 1.
@@ -1136,7 +1140,11 @@ The Q-Q (quantile-quantile) plot compares the data with a normal distribution by
 plotting their quantiles against each other. In the paired two sample case,
 quantiles for the differences between pairs of measurements are used.
                     "),
-                    plotOutput("paired_qq_plot", height = "400px", width = "66%"),
+                    plotOutput(
+                      "paired_qq_plot",
+                      height = "400px",
+                      width = "66%"
+                    ),
                     helpText("
 The theoretical quantiles are for a standard normal distribution with mean 0 and
 standard deviation 1.
@@ -1773,7 +1781,8 @@ server <- function(input, output, session) {
 
         create_t_distribution_plot(result)
       },
-      error = function(e) {}
+      error = function(e) {
+      }
     )
   })
 
@@ -2191,7 +2200,7 @@ server <- function(input, output, session) {
 
     variable <- input$two_sample_group1
 
-    tryCatch (
+    tryCatch(
       {
         check_values(data$value)
 
@@ -2222,7 +2231,7 @@ server <- function(input, output, session) {
 
     variable <- input$two_sample_group2
 
-    tryCatch (
+    tryCatch(
       {
         check_values(data$value)
 
@@ -2255,7 +2264,7 @@ server <- function(input, output, session) {
 
     variable <- input$one_sample_variable
 
-    tryCatch (
+    tryCatch(
       {
         check_values(values)
 
@@ -2380,7 +2389,8 @@ server <- function(input, output, session) {
 
         create_t_distribution_plot(result)
       },
-      error = function(e) {}
+      error = function(e) {
+      }
     )
   })
 
@@ -2544,7 +2554,8 @@ server <- function(input, output, session) {
 
           create_t_distribution_plot(result)
         },
-        error = function(e) {}
+        error = function(e) {
+        }
       )
     } else {
       # use one-sample test for differences and zero mean since the differences
@@ -2564,7 +2575,8 @@ server <- function(input, output, session) {
 
           create_t_distribution_plot(result)
         },
-        error = function(e) {}
+        error = function(e) {
+        }
       )
     }
   })
