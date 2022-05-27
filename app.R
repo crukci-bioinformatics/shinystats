@@ -163,7 +163,7 @@ create_boxplot <- function(values,
       )
   }
 
-  limits <- range(c(data$value))
+  limits <- range(c(data$value), limits)
 
   if (!is.null(xintercept) && is.finite(xintercept)) {
     boxplot <- boxplot +
@@ -669,9 +669,6 @@ deviation of the data.
               ),
               conditionalPanel(
                 condition = "!input.one_sample_choose_number_of_bins",
-                helpText("
-If not selected, an optimal number of bins is chosen based on the data.
-                ")
               ),
               conditionalPanel(
                 condition = "input.one_sample_choose_number_of_bins",
@@ -967,9 +964,6 @@ deviation of each group.
               ),
               conditionalPanel(
                 condition = "!input.two_sample_choose_number_of_bins",
-                helpText("
-If not selected, an optimal number of bins is chosen based on the data.
-                ")
               ),
               conditionalPanel(
                 condition = "input.two_sample_choose_number_of_bins",
