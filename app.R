@@ -308,7 +308,7 @@ create_t_distribution_plot <- function(t_test_result) {
   t <- t_test_result$statistic
   df <- t_test_result$parameter["df"]
 
-  limit <- max(abs(t), qt(0.975, df)) * 1.25
+  limit <- max(abs(t), qt(0.975, df)) * 1.1
   limit <- max(limit, 3)
   limit <- ceiling(limit)
 
