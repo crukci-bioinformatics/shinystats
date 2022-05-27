@@ -92,9 +92,9 @@ summary_statistics <- function(values) {
     `Valid/non-missing observations` = sum(is.finite(values)),
     Mean = mean(values, na.rm = TRUE),
     `Standard deviation` = sd(values, na.rm = TRUE),
-    `Confidence interval (C.I.) lower` = mean(values, na.rm = TRUE)
+    `95% confidence interval - lower` = mean(values, na.rm = TRUE)
       - 1.96 * sd(values, na.rm = TRUE) / sqrt(length(values)),
-    `Confidence interval (C.I.) upper` = mean(values, na.rm = TRUE)
+    `95% confidence interval - upper` = mean(values, na.rm = TRUE)
       + 1.96 * sd(values, na.rm = TRUE) / sqrt(length(values)),
     Minimum = min(values, na.rm = TRUE),
     `25th percentile (1st quartile)` = quantile(values, 0.25, na.rm = TRUE),
