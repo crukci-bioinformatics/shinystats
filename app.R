@@ -1,5 +1,6 @@
 library(shiny)
 library(shinyjs)
+library(bslib)
 library(tidyverse)
 library(patchwork)
 library(DT)
@@ -10,75 +11,28 @@ options(scipen = 999)
 # Datasets
 # ========
 
+load("datasets.RData")
+
 datasets <- list(
-  "2.1 Effect of disease X on height" = read_csv(
-    "datasets/DiseaseX.csv",
-    col_types = "cd"
-  ),
-  "2.2 Blood vessel formation" = read_csv(
-    "datasets/BloodVesselFormation1.csv",
-    col_types = "cd"
-  ),
-  "3.1 Biological process duraction" = read_csv(
-    "datasets/BiologicalProcessDurations.csv",
-    col_types = "fd"
-  ),
-  "3.2 Blood vessel formation" = read_csv(
-    "datasets/BloodVesselFormation2.csv",
-    col_types = "cdd"
-  ),
-  "3.3 NIBP gene expression in breast cancer patients" = read_csv(
-    "datasets/NIBPExpression.csv",
-    col_types = "fd"
-  ),
-  "3.4 Vitamin D levels and fibrosis" = read_csv(
-    "datasets/FibrosisVitaminD.csv",
-    col_types = "fd"
-  ),
-  "3.5 Birth weight of twins and Sudden Infant Death Syndrome" = read_csv(
-    "datasets/SIDSTwinBirthWeight.csv",
-    col_types = "dd"
-  ),
-  "4.1 Growth of Zea seedlings from self- and cross-fertilization" = read_csv(
-    "datasets/PlantGrowthFertilization.csv",
-    col_types = "dd"
-  ),
-  "4.2 Florence Nightingale's hygiene regime" = read_csv(
-    "datasets/FlorenceNightingaleHygieneRegime.csv",
-    col_types = "fd"
-  ),
-  "4.3 Effect of bran on diet of patients with diverticulosis" = read_csv(
-    "datasets/BranDiverticulosis.csv",
-    col_types = "fd"
-  ),
-  "4.4 Effect on repetitive behaviour of autism drug" = read_csv(
-    "datasets/AutismDrugRepetitiveBehaviour.csv",
-    col_types = "dd"
-  ),
-  "4.5 Effect of HIV drug on CD4 cell counts" = read_csv(
-    "datasets/HIVDrugCD4Counts.csv",
-    col_types = "dd"
-  ),
-  "4.6 Drink driving and reaction times" = read_csv(
-    "datasets/DrinkDrivingReactionTimes.csv",
-    col_types = "dd"
-  ),
-  "4.7 Pollution in poplar trees" = read_csv(
-    "datasets/TreePollution.csv",
-    col_types = "dd"
-  ),
-  "4.8 Sex effect on salaries of professors" = read_csv(
-    "datasets/ProfessorialSalaries.csv",
-    col_types = "fd"
-  ),
+  "1.1 Effect of disease X on height" = disease_x,
+  "1.2 Blood vessel formation" = blood_vessel_formation_1,
+  "2.1 Biological process duraction" = biological_process_durations,
+  "2.2 Blood vessel formation" = blood_vessel_formation_2,
+  "2.3 NIBP gene expression in breast cancer patients" = nibp_expression,
+  "2.4 Vitamin D levels and fibrosis" = fibrosis_vitamin_d,
+  "2.5 Birth weight of twins and Sudden Infant Death Syndrome" = sids_twin_birth_weight,
+  "3.1 Growth of Zea seedlings from self- and cross-fertilization" = plant_growth_fertilization,
+  "3.2 Florence Nightingale's hygiene regime" = hygiene_regime,
+  "3.3 Effect of bran on diet of patients with diverticulosis" = bran_diverticulosis,
+  "3.4 Effect on repetitive behaviour of autism drug" = autism_drug,
+  "3.5 Effect of HIV drug on CD4 cell counts" = hiv_drug_cd4_counts,
+  "3.6 Drink driving and reaction times" = drink_driving_reaction_times,
+  "3.7 Pollution in poplar trees" = tree_pollution,
+  "3.8 Sex effect on salaries of professors" = professorial_salaries,
   "Star Wars" = starwars,
-  "Effectiveness of insect sprays" = InsectSprays,
-  "Plant growth for two different treatment conditions and a control" =
-    PlantGrowth,
-  "Sibling chick weights reared in confinement or on open range" = read_csv(
-    "datasets/chick_weights.csv",
-    col_types = "cdd"
-  )
+  "Effectiveness of insect sprays" = select(InsectSprays, spray, count),
+  "Plant growth for two different treatment conditions and a control" = select(PlantGrowth, group, weight),
+  "Sibling chick weights reared in confinement or on open range" = chick_weights
 )
 
 # useful functions
@@ -537,16 +491,28 @@ two_sample_wilcoxon_test <- function(values1,
 
 ui <- fluidPage(
   useShinyjs(),
-  div(style = "margin-top: 65px;"),
+  theme = bs_theme(
+    bootswatch = "cerulean",
+    primary = "#b3006b",
+    font_scale = 0.9
+  ),
+  tags$style(HTML("
+    h5 {
+      color: #484848;
+    }
+    .checkbox {
+      margin-top: 10px;
+      margin-bottom: -15px;
+    }
+  ")),
+  div(style = "margin-top: 90px;"),
   navbarPage(
     title = div(
-      style = "color: #231F7F",
       a(
         href = "https://www.cruk.cam.ac.uk",
-        target = "_blank",
         img(
-          style = "width: 180px; margin-right: 10px;",
-          src = "CRUK_CI_logo.png"
+          style = "width: 200px; margin-right: 10px;",
+          src = "cruk_ci_transparent_logo.png"
         )
       ),
       strong(em("Statistical tests"))
@@ -558,7 +524,7 @@ ui <- fluidPage(
       wellPanel(
         fluidRow(
           column(
-            width = 4,
+            width = 5,
             fileInput(
               "data_file",
               "Upload CSV or TSV file",
@@ -576,7 +542,8 @@ ui <- fluidPage(
           )
         )
       ),
-      DT::dataTableOutput("data_table", width = "50%")
+      br(),
+      DT::dataTableOutput("data_table", width = "65%")
     ),
     tabPanel(
       title = "One sample test",
@@ -619,13 +586,14 @@ ui <- fluidPage(
         ),
         em(textOutput("one_sample_info"))
       ),
+      br(),
       tabsetPanel(
         id = "one_sample_tabs",
         selected = "Plots",
         tabPanel(
           "Summary statistics",
           br(),
-          DT::dataTableOutput("one_sample_summary_statistics", width = "50%")
+          DT::dataTableOutput("one_sample_summary_statistics", width = "65%")
         ),
         tabPanel(
           "Plots",
@@ -637,7 +605,7 @@ ui <- fluidPage(
                 label = "Show hypothesized mean",
                 value = TRUE
               ),
-              h5("Box plot", style = "margin-top: 25px"),
+              h5("Box plot", style = "margin-top: 30px;"),
               checkboxInput(
                 "one_sample_show_points",
                 label = "Show points on box plot",
@@ -652,7 +620,7 @@ edges of the box, i.e. the first and third quantiles, are always displayed.
                 label = "Overlay density on box plot",
                 value = FALSE
               ),
-              h5("Histogram", style = "margin-top: 25px"),
+              h5("Histogram", style = "margin-top: 30px;"),
               checkboxInput(
                 "one_sample_show_normal_distribution",
                 label = "Overlay normal distribution",
@@ -699,6 +667,7 @@ The actual number of bins may differ for aesthetic reasons.
 This page provides graphical and statistical tools that can help with assessing
 the assumptions of a parametric test, e.g. t-test.
               "),
+              p(),
               "The following assumptions are made in a parametric, one sample",
               "t-test:",
               p(),
@@ -753,11 +722,12 @@ test.
                 ),
                 tabPanel(
                   "Shapiro-Wilk test",
-                  h4("Shapiro-Wilk test of normality"),
+                  h5("Shapiro-Wilk test of normality"),
                   helpText("
 The Shapiro-Wilk test tests the null hypothesis that the data come from a
 normally distributed population.
                   "),
+                  div(style = "margin-top: 10px;"),
                   verbatimTextOutput("one_sample_shapiro_wilk_test"),
                   helpText("
 The null hypothesis can be rejected if the p-value is less than 0.05, suggesting
@@ -808,17 +778,18 @@ continuous and a random sample from a population that is normally distributed.
             mainPanel(
               conditionalPanel(
                 condition = "input.one_sample_test_type == 'Parametric'",
-                h4("One sample t-test"),
+                h5("One sample t-test"),
                 verbatimTextOutput("one_sample_t_test"),
                 plotOutput("one_sample_t_plot", height = "300px", width = "80%")
               ),
               conditionalPanel(
                 condition = "input.one_sample_test_type == 'Non-parametric'",
-                h4("Wilcoxon signed rank test"),
+                h5("Wilcoxon signed rank test"),
                 helpText("
 Tests whether the data come from a symmetric population centred around a
 specified median value.
                 "),
+                div(style = "margin-top: 10px;"),
                 verbatimTextOutput("one_sample_wilcoxon_test")
               )
             )
@@ -829,10 +800,14 @@ specified median value.
     tabPanel(
       title = "Two sample test",
       wellPanel(
-        checkboxInput(
-          "two_sample_paired",
-          label = "Paired observations"
+        div(
+          style = "margin-top: -10px; margin-bottom: 20px;",
+          checkboxInput(
+            "two_sample_paired",
+            label = "Paired observations"
+          )
         ),
+        div(style = "margin-top: 20px;"),
         conditionalPanel(
           condition = "input.two_sample_paired",
           fluidRow(
@@ -923,13 +898,14 @@ specified median value.
         ),
         em(textOutput("two_sample_info"))
       ),
+      br(),
       tabsetPanel(
         id = "two_sample_tabs",
         selected = "Plots",
         tabPanel(
           "Summary statistics",
           br(),
-          DT::dataTableOutput("two_sample_summary_statistics", width = "66%")
+          DT::dataTableOutput("two_sample_summary_statistics", width = "80%")
         ),
         tabPanel(
           "Plots",
@@ -951,7 +927,7 @@ edges of the box, i.e. the first and third quantiles, are always displayed.
                 label = "Overlay density on box plots",
                 value = FALSE
               ),
-              h5("Histogram"),
+              h5("Histogram", style = "margin-top: 30px;"),
               checkboxInput(
                 "two_sample_show_normal_distribution",
                 label = "Overlay normal distribution",
@@ -998,6 +974,7 @@ The actual number of bins may differ for aesthetic reasons.
 This page provides graphical and statistical tools that can help with assessing
 the assumptions of a parametric test, e.g. t-test.
               "),
+              p(),
               conditionalPanel(
                 condition = "!input.two_sample_paired",
                 "The following assumptions are made in a parametric, two",
@@ -1073,12 +1050,13 @@ test.
                   ),
                   tabPanel(
                     "Shapiro-Wilk test",
-                    h4("Shapiro-Wilk test of normality"),
+                    h5("Shapiro-Wilk test of normality"),
                     helpText("
 The Shapiro-Wilk test tests the null hypothesis that the data come from a
 normally distributed population.
 The test is run for each of the two groups separately.
                     "),
+                    div(style = "margin-top: 10px;"),
                     fluidRow(
                       column(
                         width = 6,
@@ -1108,7 +1086,7 @@ looking at box plots, density plots, histograms and Q-Q plots.
                   ),
                   tabPanel(
                     "F-test",
-                    h4("F-test to compare two variances"),
+                    h5("F-test to compare two variances"),
                     helpText("
 The F-test of equality of variances is a test for the null hypothesis that two
 normal populations have the same variance.
@@ -1117,6 +1095,7 @@ normal populations have the same variance.
 The Welch t-test, an adaptation of Student's t-test, may be more reliable when
 the samples have unequal variances and/or sample sizes.
                     "),
+                    div(style = "margin-top: 10px;"),
                     verbatimTextOutput("two_sample_variance_test"),
                     helpText("
 The null hypothesis can be rejected if the p-value is less than 0.05, suggesting
@@ -1160,13 +1139,14 @@ test.
                   ),
                   tabPanel(
                     "Shapiro-Wilk test",
-                    h4("Shapiro-Wilk test of normality"),
+                    h5("Shapiro-Wilk test of normality"),
                     helpText("
 The Shapiro-Wilk test tests the null hypothesis that the data come from a
 normally distributed population.
 In the paired two sample case, the test is run on the differences between pairs
 of measurements.
                     "),
+                    div(style = "margin-top: 10px;"),
                     verbatimTextOutput("two_sample_paired_shapiro_wilk"),
                     helpText("
 The null hypothesis can be rejected if the p-value is less than 0.05, suggesting
@@ -1245,11 +1225,11 @@ the samples have unequal variances and/or sample sizes.
                   condition = "input.two_sample_test_type == 'Parametric'",
                   conditionalPanel(
                     condition = "input.two_sample_equal_variance",
-                    h4("Two sample t-test")
+                    h5("Two sample t-test")
                   ),
                   conditionalPanel(
                     condition = "!input.two_sample_equal_variance",
-                    h4("Welch two sample t-test")
+                    h5("Welch two sample t-test")
                   ),
                   verbatimTextOutput("two_sample_t_test"),
                   plotOutput(
@@ -1260,8 +1240,9 @@ the samples have unequal variances and/or sample sizes.
                 ),
                 conditionalPanel(
                   condition = "input.two_sample_test_type == 'Non-parametric'",
-                  h4("Wilcoxon rank sum test"),
+                  h5("Wilcoxon rank sum test"),
                   helpText("Also known as the Mann-Whitney U test."),
+                  div(style = "margin-top: 10px;"),
                   verbatimTextOutput("two_sample_wilcoxon_test")
                 )
               ),
@@ -1269,7 +1250,7 @@ the samples have unequal variances and/or sample sizes.
                 condition = "input.two_sample_paired",
                 conditionalPanel(
                   condition = "input.two_sample_test_type == 'Parametric'",
-                  h4("Paired t-test"),
+                  h5("Paired t-test"),
                   verbatimTextOutput("paired_t_test"),
                   plotOutput(
                     "paired_t_plot",
@@ -1279,7 +1260,7 @@ the samples have unequal variances and/or sample sizes.
                 ),
                 conditionalPanel(
                   condition = "input.two_sample_test_type == 'Non-parametric'",
-                  h4("Wilcoxon signed rank test"),
+                  h5("Wilcoxon signed rank test"),
                   verbatimTextOutput("paired_wilcoxon_test")
                 )
               )
@@ -1289,16 +1270,47 @@ the samples have unequal variances and/or sample sizes.
       )
     )
   ),
-  div(
-    style = "margin-top: 25px;",
-    HTML("&copy;"),
-    tags$script(type = "text/javascript", "var d = new Date(); document.write(d.getFullYear())"), # nolint
-    "University of Cambridge",
-    div(
-      style = "float:right",
+  p(),
+  br(),
+  fluidRow(
+    column( 
+      width = 7,
       a(
-        href = "https://www.cruk.cam.ac.uk/terms-and-conditions",
-        target = "_blank", "Terms and Conditions"
+        href = "https://www.cam.ac.uk",
+        img(
+          style = "width: 125px; margin-left: 15px;",
+          src = "university_of_cambridge_logo.png"
+        )
+      ),
+      a(
+        href = "https://www.cruk.cam.ac.uk",
+        img(
+          style = "width: 150px; margin-left: 10px;",
+          src = "cruk_ci_logo.png"
+        )
+      )
+    ),
+    column(
+      width = 5,
+      div(
+        style = "font-size: 90%; float: right;",
+        a(
+          href = "mailto:statistics@cruk.cam.ac.uk",
+          "Contact us"
+        )
+        # a(
+        #   href = "https://www.cruk.cam.ac.uk/terms-and-conditions",
+        #   "Terms and Conditions",
+        #   style = "margin-left: 10px;"
+        # )
+      ),
+      br(),
+      div(
+        style = "font-size: 80%; float: right;",
+        "Copyright",
+        HTML("&copy;"),
+        tags$script(type = "text/javascript", "var d = new Date(); document.write(d.getFullYear())"),
+        "University of Cambridge",
       )
     )
   ),
@@ -1501,9 +1513,10 @@ server <- function(input, output, session) {
     }
 
     possible_categorical_variables <- data %>%
+      select(where(is.atomic)) %>%
       summarize(across(everything(), n_distinct, na.rm = TRUE)) %>%
       pivot_longer(everything(), names_to = "variable", values_to = "n") %>%
-      filter(n <= 10) %>%
+      filter(n <= 20) %>%
       pull(variable)
 
     if (is_empty(possible_categorical_variables)) {
