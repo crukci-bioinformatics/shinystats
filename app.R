@@ -1278,14 +1278,14 @@ the samples have unequal variances and/or sample sizes.
       a(
         href = "https://www.cam.ac.uk",
         img(
-          style = "width: 125px; margin-left: 15px;",
+          style = "width: 150px; margin-left: 15px;",
           src = "university_of_cambridge_logo.png"
         )
       ),
       a(
         href = "https://www.cruk.cam.ac.uk",
         img(
-          style = "width: 150px; margin-left: 10px;",
+          style = "width: 175px; margin-left: 10px;",
           src = "cruk_ci_logo.png"
         )
       )
@@ -1928,7 +1928,7 @@ server <- function(input, output, session) {
         data %>%
           select(all_of(c(variable1, variable2))) %>%
           mutate(`__observation__` = row_number()) %>%
-          mutate(`__difference__` = get(variable2) - get(variable1)) %>%
+          mutate(`__difference__` = get(variable1) - get(variable2)) %>%
           pivot_longer(
             cols = all_of(c(variable1, variable2)),
             names_to = "group",
