@@ -500,9 +500,21 @@ ui <- fluidPage(
     h5 {
       color: #484848;
     }
+    h6 {
+      color: #484848;
+    }
+    body {
+      accent-color: #b3006b;
+    }
     .checkbox {
       margin-top: 10px;
       margin-bottom: -15px;
+    }
+    .js-irs-0 .irs-single, .js-irs-0 .irs-bar-edge, .js-irs-0 .irs-bar {
+      background: #b3006b;
+    }
+    .js-irs-1 .irs-single, .js-irs-1 .irs-bar-edge, .js-irs-1 .irs-bar {
+      background: #b3006b;
     }
   ")),
   div(style = "margin-top: 90px;"),
@@ -534,7 +546,7 @@ ui <- fluidPage(
           column(
             width = 6,
             offset = 1,
-            selectizeInput(
+            selectInput(
               "sample_data",
               label = "Sample data sets",
               choices = names(datasets)
