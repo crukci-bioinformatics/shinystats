@@ -77,7 +77,9 @@ create_boxplot <- function(values,
                            xintercept = NULL,
                            limits = NULL,
                            show_points = TRUE,
-                           show_density = FALSE) {
+                           show_density = FALSE,
+                           colours = c("#648FFF", "#DC267F"),
+                           intercept_colour = "#FFB000") {
   if (is.null(values)) {
     return(ggplot() + theme_minimal())
   }
@@ -123,7 +125,7 @@ create_boxplot <- function(values,
     boxplot <- boxplot +
       geom_vline(
         xintercept = xintercept,
-        colour = "#FFB000",
+        colour = intercept_colour,
         size = 1.25,
         linetype = "solid"
       )
@@ -132,8 +134,8 @@ create_boxplot <- function(values,
 
   boxplot <- boxplot +
     scale_x_continuous(limits = limits) +
-    scale_y_discrete(drop = FALSE) +
-    scale_fill_manual(values = c("#648FFF", "#DC267F"), drop = FALSE) +
+    scale_y_discrete(drop = FALSE, limits = rev) +
+    scale_fill_manual(values = colours, drop = FALSE) +
     labs(x = name) +
     theme_minimal() +
     theme(
@@ -156,7 +158,9 @@ create_histogram <- function(values,
                              name = NULL,
                              xintercept = NULL,
                              number_of_bins = NULL,
-                             show_normal_distribution = FALSE) {
+                             show_normal_distribution = FALSE,
+                             colours = c("#648FFF", "#DC267F"),
+                             intercept_colour = "#FFB000") {
   if (is.null(values)) {
     return(ggplot() + theme_minimal())
   }
@@ -201,7 +205,7 @@ create_histogram <- function(values,
     histogram <- histogram +
       geom_vline(
         xintercept = xintercept,
-        colour = "#FFB000",
+        colour = intercept_colour,
         size = 1.25,
         linetype = "solid"
       )
@@ -210,7 +214,7 @@ create_histogram <- function(values,
   histogram <- histogram +
     scale_x_continuous(limits = limits) +
     scale_y_continuous(expand = expansion(mult = c(0, 0.05))) +
-    scale_fill_manual(values = c("#648FFF", "#DC267F"), drop = FALSE) +
+    scale_fill_manual(values = colours, drop = FALSE) +
     labs(x = name, y = NULL) +
     facet_wrap(vars(group), drop = FALSE) +
     theme_minimal() +
@@ -229,7 +233,9 @@ create_histogram <- function(values,
 }
 
 # Q-Q plot
-create_qq_plot <- function(values, groups = "") {
+create_qq_plot <- function(values,
+                           groups = "",
+                           colours = c("#648FFF", "#DC267F")) {
   if (is.null(values)) {
     return(ggplot() + theme_minimal())
   }
@@ -245,7 +251,7 @@ create_qq_plot <- function(values, groups = "") {
     stat_qq() +
     stat_qq_line() +
     labs(x = "theoretical quantiles", y = "sample quantiles") +
-    scale_colour_manual(values = c("#648FFF", "#DC267F"), drop = FALSE) +
+    scale_colour_manual(values = colours, drop = FALSE) +
     facet_wrap(vars(group), drop = FALSE) +
     theme_minimal() +
     theme(
@@ -527,13 +533,26 @@ ui <- fluidPage(
           src = "cruk_ci_transparent_logo.png"
         )
       ),
-      strong(em("Statistical tests"))
+      strong(em("ShinyStats"))
     ),
-    windowTitle = "Statistical tests",
+    windowTitle = "ShinyStats",
     position = "fixed-top",
     tabPanel(
       title = "Data input",
       wellPanel(
+        "Interactive web application for performing one- and two-sample",
+        "statistical tests developed by the",
+        a(
+          href = "https://www.cruk.cam.ac.uk/core-facilities/bioinformatics-core",
+          "Bioinformatics Core"
+        ),
+        "at the Cancer Research UK Cambridge Institute for the",
+        a(
+          href = "http://bioinformatics-core-shared-training.github.io/IntroductionToStats",
+          "Introduction to Statistics"
+        ),
+        "training course.",
+        p(),
         fluidRow(
           column(
             width = 5,
@@ -548,13 +567,18 @@ ui <- fluidPage(
             offset = 1,
             selectInput(
               "sample_data",
-              label = "Sample data sets",
+              label = "Select a sample data set",
               choices = names(datasets)
             )
           )
-        )
+        ),
+        "Upload a tabular data file or select one of the sample datasets from",
+        "the drop-down list and click on either the 'One sample test' or",
+        "'Two sample test' tabs above to select variables of interest, explore",
+        "and visualize the selected data, and carry out statistical tests."
       ),
-      br(),
+      h5(textOutput("selected_dataset")),
+      p(),
       DT::dataTableOutput("data_table", width = "65%")
     ),
     tabPanel(
@@ -596,7 +620,7 @@ ui <- fluidPage(
             )
           )
         ),
-        em(textOutput("one_sample_info"))
+        em(textOutput("one_sample_info"), style="color: #648FFF")
       ),
       br(),
       tabsetPanel(
@@ -785,6 +809,19 @@ continuous and a random sample from a population that is normally distributed.
                   "Greater" = "greater",
                   "Less" = "less"
                 )
+              ),
+              div(style = "margin-top: -10px;"),
+              conditionalPanel(
+                condition = "input.one_sample_alternative == 'two.sided'",
+                helpText("The true mean is not equal to the hypothesized value.")
+              ),
+              conditionalPanel(
+                condition = "input.one_sample_alternative == 'greater'",
+                helpText("The true mean is greater than the hypothesized value.")
+              ),
+              conditionalPanel(
+                condition = "input.one_sample_alternative == 'less'",
+                helpText("The true mean is less than the specified hypothesized value.")
               )
             ),
             mainPanel(
@@ -812,14 +849,16 @@ specified median value.
     tabPanel(
       title = "Two sample test",
       wellPanel(
-        div(
-          style = "margin-top: -10px; margin-bottom: 20px;",
-          checkboxInput(
-            "two_sample_paired",
-            label = "Paired observations"
+        fluidRow(
+          style = "margin-top: -10px; margin-bottom: 5px;",
+          column(
+            width = 4,
+            checkboxInput(
+              "two_sample_paired",
+              label = "Paired observations"
+            )
           )
         ),
-        div(style = "margin-top: 20px;"),
         conditionalPanel(
           condition = "input.two_sample_paired",
           fluidRow(
@@ -835,7 +874,7 @@ specified median value.
               width = 2,
               selectInput(
                 "two_sample_variable2",
-                label = "Variable 2",
+                label = "Variable 2 (reference)",
                 choices = character()
               )
             ),
@@ -908,7 +947,7 @@ specified median value.
             )
           )
         ),
-        em(textOutput("two_sample_info"))
+        em(textOutput("two_sample_info"), style="color: #648FFF")
       ),
       br(),
       tabsetPanel(
@@ -1228,6 +1267,31 @@ the samples have unequal variances and/or sample sizes.
                   "Greater" = "greater",
                   "Less" = "less"
                 )
+              ),
+              div(style = "margin-top: -10px;"),
+              conditionalPanel(
+                condition = "input.two_sample_alternative == 'two.sided' && !input.two_sample_paired",
+                helpText("The means for the two groups are different.")
+              ),
+              conditionalPanel(
+                condition = "input.two_sample_alternative == 'greater' && !input.two_sample_paired",
+                helpText("The mean for group 1 is greater than that for group 2.")
+              ),
+              conditionalPanel(
+                condition = "input.two_sample_alternative == 'less' && !input.two_sample_paired",
+                helpText("The mean for group 1 is less than that for group 2.")
+              ),
+              conditionalPanel(
+                condition = "input.two_sample_alternative == 'two.sided' && input.two_sample_paired",
+                helpText("The mean difference between variable 1 and variable 2 is not equal to 0.")
+              ),
+              conditionalPanel(
+                condition = "input.two_sample_alternative == 'greater' && input.two_sample_paired",
+                helpText("The mean difference between variable 1 and variable 2 is greater than 0.")
+              ),
+              conditionalPanel(
+                condition = "input.two_sample_alternative == 'less' && input.two_sample_paired",
+                helpText("The mean difference between variable 1 and variable 2 is less than 0.")
               )
             ),
             mainPanel(
@@ -1450,16 +1514,19 @@ server <- function(input, output, session) {
       "two_sample_alternative",
       selected = "two.sided"
     )
-
   }
 
-  reactive_values <- reactiveValues(data = NULL)
+  reactive_values <- reactiveValues(
+    dataset_name = "",
+    data = NULL
+  )
 
   # data file upload
   observe({
     file <- input$data_file
     if (!is.null(file)) {
       reset_selections()
+      reactive_values$dataset_name <- file$name
       if (str_detect(file$name, regex("\\.csv$", ignore_case = TRUE))) {
         reactive_values$data <- read_csv(file$datapath)
       } else {
@@ -1472,6 +1539,7 @@ server <- function(input, output, session) {
   observe({
     sample_data <- input$sample_data
     reset_selections()
+    reactive_values$dataset_name <- sample_data
     reactive_values$data <- datasets[[sample_data]]
   })
 
@@ -1544,6 +1612,11 @@ server <- function(input, output, session) {
       count(variable) %>%
       filter(n >= 2) %>%
       pull(variable)
+  })
+
+  # heading for selected dataset
+  output$selected_dataset <- renderText({
+    return(reactive_values$dataset_name)
   })
 
   # table displaying uploaded data
@@ -1904,14 +1977,14 @@ server <- function(input, output, session) {
       "two_sample_variable1",
       label = "Variable 1",
       choices = numerical_variables,
-      selected = numerical_variables[1]
+      selected = numerical_variables[2]
     )
     updateSelectInput(
       session,
       "two_sample_variable2",
-      label = "Variable 2",
+      label = "Variable 2 (reference)",
       choices = numerical_variables,
-      selected = numerical_variables[2]
+      selected = numerical_variables[1]
     )
   })
 
@@ -2024,7 +2097,11 @@ server <- function(input, output, session) {
         }
       } else {
         if (is_empty(categorical_variables)) {
-          return("No categorical variables in current data set")
+          if (length(numerical_variables) >= 2) {
+            return("No categorical variables - does the data set contain paired observations?")
+          } else {
+            return("No categorical variables in current data set")
+          }
         }
       }
     }
@@ -2185,7 +2262,8 @@ server <- function(input, output, session) {
         differences,
         name = "difference",
         number_of_bins = number_of_bins,
-        show_normal_distribution = input$two_sample_show_normal_distribution
+        show_normal_distribution = input$two_sample_show_normal_distribution,
+        colours = "#FFB000"
       )
 
       limits <- layer_scales(difference_histogram)$x$limits
@@ -2195,7 +2273,8 @@ server <- function(input, output, session) {
         name = "difference",
         limits = limits,
         show_points = input$two_sample_show_points,
-        show_density = input$two_sample_violin
+        show_density = input$two_sample_violin,
+        colours = "#FFB000"
       )
 
       plots <-
@@ -2216,7 +2295,7 @@ server <- function(input, output, session) {
 
   # paired Q-Q plot
   output$paired_qq_plot <- renderPlot({
-    create_qq_plot(two_sample_paired_differences())
+    create_qq_plot(two_sample_paired_differences(), colours = "#FFB000")
   })
 
   # two sample Shapiro-Wilk test - first group
