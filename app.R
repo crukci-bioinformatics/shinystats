@@ -1111,11 +1111,11 @@ The test is run for each of the two groups separately.
                     fluidRow(
                       column(
                         width = 6,
-                        verbatimTextOutput("two_sample_shapiro_wilk_test1")
+                        verbatimTextOutput("two_sample_shapiro_wilk_test2")
                       ),
                       column(
                         width = 6,
-                        verbatimTextOutput("two_sample_shapiro_wilk_test2")
+                        verbatimTextOutput("two_sample_shapiro_wilk_test1")
                       )
                     ),
                     helpText("
@@ -2308,7 +2308,7 @@ server <- function(input, output, session) {
       {
         check_values(data$value)
 
-        cat("# Group 1: ", variable, "\n", sep = "")
+        cat("# Group: ", variable, "\n", sep = "")
 
         values <- data %>%
           filter(group == variable) %>%
@@ -2339,7 +2339,7 @@ server <- function(input, output, session) {
       {
         check_values(data$value)
 
-        cat("# Group 2: ", variable, "\n", sep = "")
+        cat("# Group: ", variable, "\n", sep = "")
 
         values <- data %>%
           filter(group == variable) %>%
