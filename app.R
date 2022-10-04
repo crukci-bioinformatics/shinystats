@@ -918,7 +918,7 @@ specified median value.
               width = 2,
               selectInput(
                 "two_sample_group2",
-                label = "Group 2",
+                label = "Group 2 (reference)",
                 choices = character()
               )
             ),
@@ -1952,14 +1952,14 @@ server <- function(input, output, session) {
       "two_sample_group1",
       label = "Group 1",
       choices = two_sample_groups(),
-      selected = groups[1]
+      selected = groups[2]
     )
     updateSelectInput(
       session,
       "two_sample_group2",
-      label = "Group 2",
+      label = "Group 2 (reference)",
       choices = two_sample_groups(),
-      selected = groups[2]
+      selected = groups[1]
     )
   })
 
@@ -2044,7 +2044,7 @@ server <- function(input, output, session) {
           select(all_of(c(categorical_variable, variable))) %>%
           `colnames<-`(c("group", "value")) %>%
           filter(group %in% c(group1, group2)) %>%
-          mutate(group = factor(group, levels = c(group1, group2)))
+          mutate(group = factor(group, levels = c(group2, group1)))
       }
     }
   })
