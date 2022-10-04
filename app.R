@@ -1144,7 +1144,7 @@ normal populations have the same variance.
                     "),
                     helpText("
 The Welch t-test, an adaptation of Student's t-test, may be more reliable when
-the samples have unequal variances and/or sample sizes.
+the samples have unequal variances or sample sizes.
                     "),
                     div(style = "margin-top: 10px;"),
                     verbatimTextOutput("two_sample_variance_test"),
@@ -1255,7 +1255,7 @@ measured differences are normally distributed.
                 ),
                 helpText("
 The Welch t-test, an adaptation of Student's t-test, may be more reliable when
-the samples have unequal variances and/or sample sizes.
+the samples have unequal variances or sample sizes.
                 ")
               ),
               br(),
