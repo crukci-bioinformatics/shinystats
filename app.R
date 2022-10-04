@@ -813,15 +813,15 @@ continuous and a random sample from a population that is normally distributed.
               div(style = "margin-top: -10px;"),
               conditionalPanel(
                 condition = "input.one_sample_alternative == 'two.sided'",
-                helpText("The true mean is not equal to the hypothesized value.")
+                helpText("The true mean is not equal to the specified value.")
               ),
               conditionalPanel(
                 condition = "input.one_sample_alternative == 'greater'",
-                helpText("The true mean is greater than the hypothesized value.")
+                helpText("The true mean is greater than the specified value.")
               ),
               conditionalPanel(
                 condition = "input.one_sample_alternative == 'less'",
-                helpText("The true mean is less than the specified hypothesized value.")
+                helpText("The true mean is less than the specified value.")
               )
             ),
             mainPanel(
@@ -1275,11 +1275,11 @@ the samples have unequal variances and/or sample sizes.
               ),
               conditionalPanel(
                 condition = "input.two_sample_alternative == 'greater' && !input.two_sample_paired",
-                helpText("The mean for group 1 is greater than that for group 2.")
+                helpText("The mean for group 1 is greater than the mean for group 2.")
               ),
               conditionalPanel(
                 condition = "input.two_sample_alternative == 'less' && !input.two_sample_paired",
-                helpText("The mean for group 1 is less than that for group 2.")
+                helpText("The mean for group 1 is less than the mean for group 2.")
               ),
               conditionalPanel(
                 condition = "input.two_sample_alternative == 'two.sided' && input.two_sample_paired",
