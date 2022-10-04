@@ -134,7 +134,7 @@ create_boxplot <- function(values,
 
   boxplot <- boxplot +
     scale_x_continuous(limits = limits) +
-    scale_y_discrete(drop = FALSE, limits = rev) +
+    scale_y_discrete(drop = FALSE) +
     scale_fill_manual(values = colours, drop = FALSE) +
     labs(x = name) +
     theme_minimal() +
@@ -2019,7 +2019,7 @@ server <- function(input, output, session) {
             names_to = "group",
             values_to = "value"
           ) %>%
-          mutate(group = factor(group, levels = c(variable1, variable2)))
+          mutate(group = factor(group, levels = c(variable2, variable1)))
       }
     } else {
       # data expected to be structured with one categorical variable/column
