@@ -16,7 +16,7 @@ load("datasets.RData")
 datasets <- list(
   "1.1 Effect of disease X on height" = disease_x,
   "1.2 Blood vessel formation" = blood_vessel_formation_1,
-  "2.1 Biological process duraction" = biological_process_durations,
+  "2.1 Biological process duration" = biological_process_durations,
   "2.2 Blood vessel formation" = blood_vessel_formation_2,
   "2.3 NIBP gene expression in breast cancer patients" = nibp_expression,
   "2.4 Vitamin D levels and fibrosis" = fibrosis_vitamin_d,
