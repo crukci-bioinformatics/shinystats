@@ -302,13 +302,13 @@ create_t_distribution_plot <- function(t_test_result) {
 
   plot <- plot + stat_function(
     fun = dt, args = list(df = df),
-    colour = "grey50", size = 1,
+    colour = "grey50", linewidth = 1,
   )
 
   plot <- plot +
     geom_vline(
       xintercept = t_test_result$statistic,
-      colour = "#648FFF", size = 1
+      colour = "#648FFF", linewidth = 1
     )
 
   plot <- plot +
