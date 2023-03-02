@@ -126,7 +126,7 @@ create_boxplot <- function(values,
       geom_vline(
         xintercept = xintercept,
         colour = intercept_colour,
-        size = 1.25,
+        linewidth = 1.25,
         linetype = "solid"
       )
     limits <- range(c(limits, xintercept))
@@ -206,7 +206,7 @@ create_histogram <- function(values,
       geom_vline(
         xintercept = xintercept,
         colour = intercept_colour,
-        size = 1.25,
+        linewidth = 1.25,
         linetype = "solid"
       )
   }
@@ -1594,7 +1594,7 @@ server <- function(input, output, session) {
 
     possible_categorical_variables <- data %>%
       select(where(is.atomic)) %>%
-      summarize(across(everything(), n_distinct, na.rm = TRUE)) %>%
+      summarize(across(everything(), ~ n_distinct(.x, na.rm = TRUE))) %>%
       pivot_longer(everything(), names_to = "variable", values_to = "n") %>%
       filter(n <= 20) %>%
       pull(variable)
