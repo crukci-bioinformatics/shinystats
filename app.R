@@ -2198,7 +2198,7 @@ server <- function(input, output, session) {
           )
         }
 
-        colnames(summary_statistics)[1] <- ""
+        colnames(summary_statistics)[1] <- " "
 
         DT::datatable(
           summary_statistics,
