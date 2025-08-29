@@ -543,7 +543,7 @@ ui <- fluidPage(
         "Interactive web application for performing one- and two-sample",
         "statistical tests developed by the",
         a(
-          href = "https://www.cruk.cam.ac.uk/core-facilities/bioinformatics-core",
+          href = "https://www.cruk.cam.ac.uk/core-facilities/bioinformatics",
           "Bioinformatics Core"
         ),
         "at the Cancer Research UK Cambridge Institute for the",
